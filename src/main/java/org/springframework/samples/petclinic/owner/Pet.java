@@ -32,6 +32,9 @@ import javax.persistence.Table;
 
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -62,6 +65,7 @@ public class Pet extends NamedEntity {
 
     @ManyToOne
     @JoinColumn(name = "owner_id")
+    @JsonIgnore
     private Owner owner;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy="petId", fetch = FetchType.EAGER)

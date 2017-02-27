@@ -39,23 +39,38 @@
   <h2>Pets and Visits</h2>
 
   <table class="table table-striped" ng-app="app"
-    ng-controller="pet as pet">
+    ng-controller="owner as owner">
 
-    <tr th:each="pet : ${owner.pets}"
-      th:ng-init="'pet.fetch(' + ${pet.id} + ')'">
+    <tr ng-repeat="pet in owner.pets"
+      th:with="ownerUrl=@{{ownerId}/pets/(ownerId=${owner.id})}">
       <td valign="top">
-        <dl id="pet" class="dl-horizontal">
+        <dl class="dl-horizontal">
           <dt>Name</dt>
-          <dd th:text="${pet.name}" /></dd>
+          <dd>{{pet.name}}</dd>
           <dt>Birth Date</dt>
-          <dd
-            th:text="${#calendars.format(pet.birthDate, 'yyyy-MM-dd')}" /></dd>
+          <dd>{{pet.birthDate}}</dd>
           <dt>Type</dt>
-          <dd th:text="${pet.type}" /></dd>
+          <dd>{{pet.type.name}}</dd>
         </dl>
       </td>
-      <td><span th:ng-if="'pet.video(\'' + ${pet.id} + '\')'"><a th:href="'{{pet.video(\'' + ${pet.id} + '\')}}'"><i 
-        class="glyphicon glyphicon-facetime-video"></i></a></span></td>
+      <td><span ng-if="pet.video"><a href="#"
+          data-toggle="modal" data-target="#pet-{{pet.id}}"><i
+            class="glyphicon glyphicon-facetime-video"></i></a></span> <!-- Modal -->
+        <div class="modal fade" id="pet-{{pet.id}}" role="dialog">
+          <div class="modal-dialog">
+            <!-- Modal content-->
+            <div class="modal-content">
+              <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">Video of {{pet.name}}</h4>
+              </div>
+              <div class="modal-body" ng-bind-html="pet.video"></div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default"
+                  data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div></td>
       <td valign="top">
         <table class="table-condensed">
           <thead>
@@ -64,16 +79,14 @@
               <th>Description</th>
             </tr>
           </thead>
-          <tr th:each="visit : ${pet.visits}">
-            <td th:text="${#calendars.format(visit.date, 'yyyy-MM-dd')}"></td>
-            <td th:text="${visit?.description}"></td>
+          <tr ng-repeat="visit in pet.visits">
+            <td>{{visit.date}}</td>
+            <td>{{visit.description}}</td>
           </tr>
           <tr>
-            <td><a
-              th:href="@{{ownerId}/pets/{petId}/edit(ownerId=${owner.id},petId=${pet.id})}">Edit
+            <td><a th:href="${ownerUrl} + '{{pet.id}}'">Edit
                 Pet</a></td>
-            <td><a
-              th:href="@{{ownerId}/pets/{petId}/visits/new(ownerId=${owner.id},petId=${pet.id})}">Add
+            <td><a th:href="${ownerUrl} + '{{pet.id}}/visits/new'">Add
                 Visit</a></td>
           </tr>
         </table>
@@ -85,18 +98,30 @@
 </body>
 
 <script type="text/javascript">
-    angular.module("app", []).controller("pet", function($http) {
-        var self = this;
-        var videos = {};
-        self.video = function(id) {
-            return videos[id];
-        };
-        self.fetch = function(id) {
-            $http.get("videos/" + id).then(function(response) {
-                videos[id] = response.data.url;
-            });
-        };
-    });
+    angular
+            .module("app", [])
+            .controller(
+                    "owner",
+                    function($http, $sce) {
+                        var self = this;
+                        self.pets = [];
+                        fetch = function(pet) {
+                            $http
+                                    .get("videos/" + pet.id)
+                                    .then(
+                                            function(response) {
+                                                pet.video = $sce
+                                                        .trustAsHtml('<iframe width="500" height="300" src="' + response.data.url + '" frameborder="0" allowfullscreen></iframe>');
+                                            });
+                        };
+                        $http.get("#").then(function(response) {
+                            self.pets = response.data.pets;
+                            for (var i=0; i<self.pets.length; i++) {
+                              var pet = self.pets[i]
+                              fetch(pet);
+                            }
+                        });
+                    });
 </script>
 
 </html>

@@ -1,5 +1,5 @@
 <!doctype html>
-<html th:fragment="layout (template, menu)" th:with="script=${script?:''}">
+<html th:fragment="layout (template, menu)">
 
 <head>
 
@@ -98,8 +98,8 @@
   <script type="text/javascript" th:src="@{/webjars/jquery-ui/jquery-ui.min.js}"></script>
   <script type="text/javascript" th:src="@{/webjars/bootstrap/js/bootstrap.min.js}"></script>
   <script type="text/javascript" th:src="@{/webjars/angularjs/angular.min.js}"></script>
-  <script type="text/javascript" th:replace="${script}">
-        </script>
+  <span th:if="${script}"><script type="text/javascript" th:replace="${script?:''}">
+        </script></span>
 
 </body>
 

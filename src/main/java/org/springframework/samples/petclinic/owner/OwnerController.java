@@ -25,10 +25,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
@@ -118,6 +120,18 @@ class OwnerController {
             this.owners.save(owner);
             return "redirect:/owners/{ownerId}";
         }
+    }
+
+    /**
+     * Custom handler for displaying an owner.
+     *
+     * @param ownerId the ID of the owner to display
+     * @return a ModelMap with the model attributes for the view
+     */
+    @GetMapping(path="/owners/{ownerId}", produces="application/json")
+    @ResponseBody
+    public Owner owner(@PathVariable("ownerId") int ownerId) {
+        return this.owners.findById(ownerId);
     }
 
     /**

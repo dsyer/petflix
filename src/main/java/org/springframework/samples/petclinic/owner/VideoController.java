@@ -32,6 +32,6 @@ class VideoController {
     @GetMapping
     public Map<String, String> initCreationForm(Owner owner, ModelMap model) {
         return Collections.singletonMap("url",
-                "http://petfriendlysites.com/petfriendlysites/cat-and-dog-video-of-the-week-6-17/");
+                "https://www.youtube.com/embed/Jqi6v7D4t8M");
     }
 }
