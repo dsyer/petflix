@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{fragments/layout :: layout (~{::body},'owners')}">
+  th:replace="~{fragments/layout :: layout (template=~{::body},menu='owners',script=~{::script})}">
 
   <body>
   
@@ -40,7 +40,7 @@
   
     <table class="table table-striped">
   
-      <tr th:each="pet : ${owner.pets}">
+      <tr th:each="pet : ${owner.pets}" ng-app="app" ng-controller="pet as pet">
         <td valign="top">
           <dl class="dl-horizontal">
             <dt>Name</dt>
@@ -51,6 +51,9 @@
             <dt>Type</dt>
             <dd th:text="${pet.type}" /></dd>
           </dl>
+        </td>
+        <td ng-if="pet.video">
+          <i class="glyphicon glyphicon-facetime-video"></i>
         </td>
         <td valign="top">
           <table class="table-condensed">
@@ -79,5 +82,11 @@
     </table>
   
   </body>
+
+<script type="text/javascript">
+    angular.module("app", []).controller("pet", function() {
+        this.video = true;
+    });
+</script>
 
 </html>
