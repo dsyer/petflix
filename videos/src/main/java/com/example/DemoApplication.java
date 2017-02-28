@@ -1,5 +1,6 @@
 package com.example;
 
+import java.util.Random;
 import java.util.function.Function;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -13,7 +14,7 @@ public class DemoApplication {
 
     @Bean
     public Function<Flux<Integer>, Flux<Video>> videos() {
-        return ids -> Flux.just(new Video("https://www.youtube.com/embed/Jqi6v7D4t8M"))
+        return ids -> ids.map(id -> new Video(id, "https://www.youtube.com/embed/Jqi6v7D4t8M"))
                 .log();
     }
 
@@ -25,12 +26,15 @@ public class DemoApplication {
 class Video {
 
     private String url;
+    private int stars;
 
-    Video() {
+    Video(int id, String value) {
+        this.url = value;
+        this.stars = calculateStars(id);
     }
 
-    public Video(String value) {
-        this.url = value;
+    private int calculateStars(int id) {
+        return new Random((long)id).nextInt(6);
     }
 
     public String getUrl() {
@@ -39,5 +43,13 @@ class Video {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+    
+    public int getStars() {
+        return stars;
+    }
+
+    public void setStars(int stars) {
+        this.stars = stars;
     }
 }
