@@ -93,14 +93,14 @@ class PetController {
         }
     }
 
-    @RequestMapping(value = "/pets/{petId}/edit", method = RequestMethod.GET)
+    @RequestMapping(value = "/pets/{petId}", method = RequestMethod.GET)
     public String initUpdateForm(@PathVariable("petId") int petId, ModelMap model) {
         Pet pet = this.pets.findById(petId);
         model.put("pet", pet);
         return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
     }
 
-    @RequestMapping(value = "/pets/{petId}/edit", method = RequestMethod.POST)
+    @RequestMapping(value = "/pets/{petId}", method = RequestMethod.POST)
     public String processUpdateForm(@Valid Pet pet, BindingResult result, Owner owner, ModelMap model) {
         if (result.hasErrors()) {
             pet.setOwner(owner);

@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Bean;
 import reactor.core.publisher.Flux;
 
 @SpringBootApplication
-public class DemoApplication {
+public class VideoApplication {
 
     @Bean
     public Function<Flux<Integer>, Flux<Video>> videos() {
@@ -19,7 +19,7 @@ public class DemoApplication {
     }
 
     public static void main(String[] args) {
-        new SpringApplicationBuilder(DemoApplication.class).run(args);
+        new SpringApplicationBuilder(VideoApplication.class).run(args);
     }
 }
 
