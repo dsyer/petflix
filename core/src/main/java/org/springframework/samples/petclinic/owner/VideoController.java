@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -36,6 +37,9 @@ import org.springframework.web.client.RestTemplate;
 class VideoController {
     private RestTemplate template;
 
+    @Value("${services.video.uri}")
+    private URI videosUrl;
+
     VideoController(RestTemplateBuilder builder) {
         template = builder.build();
     }
@@ -43,7 +47,7 @@ class VideoController {
     @GetMapping("/owners/videos/{id}")
     public Map<String, String> video(@PathVariable Integer id) throws Exception {
         return template.exchange(
-                RequestEntity.post(new URI("http://localhost:9000/videos"))
+                RequestEntity.post(new URI(videosUrl.toString() + "/videos"))
                         .accept(MediaType.APPLICATION_JSON).body(Arrays.asList(id)),
                 new ParameterizedTypeReference<List<Map<String, String>>>() {
                 }).getBody().iterator().next();

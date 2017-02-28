@@ -16,11 +16,19 @@
 
 package org.springframework.samples.petclinic.system;
 
+import java.net.URI;
+import java.util.Map;
+
+import org.thymeleaf.IEngineConfiguration;
 import org.thymeleaf.templateresolver.ITemplateResolver;
 import org.thymeleaf.templateresolver.UrlTemplateResolver;
+import org.thymeleaf.templateresource.ITemplateResource;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.util.UriComponents;
+import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  * @author Dave Syer
@@ -30,8 +38,25 @@ import org.springframework.context.annotation.Configuration;
 public class ThymeleafTemplateConfiguration {
 
     @Bean
-    public ITemplateResolver remoteTemplateResolver() {
-        return new UrlTemplateResolver();
+    public ITemplateResolver remoteTemplateResolver(
+            @Value("${services.video.uri}") URI videosUrl) {
+        return new UrlTemplateResolver() {
+            @Override
+            protected ITemplateResource computeTemplateResource(
+                    IEngineConfiguration configuration, String ownerTemplate,
+                    String template, String resourceName, String characterEncoding,
+                    Map<String, Object> templateResolutionAttributes) {
+                if (!resourceName.startsWith("http:") && !resourceName.startsWith("https:")) {
+                    return null;
+                }
+                UriComponents videos = UriComponentsBuilder.fromUri(videosUrl).build();
+                resourceName = UriComponentsBuilder.fromHttpUrl(resourceName).host(videos.getHost())
+                        .scheme(videos.getScheme()).port(videos.getPort()).build().toString();
+                return super.computeTemplateResource(configuration, ownerTemplate,
+                        template, resourceName, characterEncoding,
+                        templateResolutionAttributes);
+            }
+        };
     }
 
 }
