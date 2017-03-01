@@ -16,7 +16,7 @@
                 Video of {{pet.name}} <span><a href="#"
                   title="Rate this Video" ng-repeat="star in pet.stars"
                   class="glyphicon
-                    glyphicon-{{star}}"></a></span>
+                    glyphicon-{{star}}" ng-click="owner.rate(pet, $index+1)"></a></span>
               </h4>
             </div>
             <div class="modal-body" ng-bind-html="pet.video"></div>
@@ -53,6 +53,23 @@
                                                 pet.video = $sce
                                                         .trustAsHtml('<iframe width="500" height="300" src="' + response.data.url + '" frameborder="0" allowfullscreen></iframe>');
                                             });
+                        };
+                        self.rate = function(pet, stars) {
+                            $http
+                            .post("videos/" + pet.id, {stars:stars})
+                            .then(
+                                    function(response) {
+                                        var stars = response.data.stars;
+                                        pet.stars = {};
+                                        for (var i = 0; i < stars; i++) {
+                                            pet.stars[i] = "star";
+                                        }
+                                        for (var i = stars; i < 5; i++) {
+                                            pet.stars[i] = "star-empty";
+                                        }
+                                        pet.video = $sce
+                                                .trustAsHtml('<iframe width="500" height="300" src="' + response.data.url + '" frameborder="0" allowfullscreen></iframe>');
+                                    });
                         };
                         $http.get("#").then(function(response) {
                             self.pets = response.data.pets;

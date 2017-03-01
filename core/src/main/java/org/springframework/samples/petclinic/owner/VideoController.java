@@ -16,7 +16,9 @@
 package org.springframework.samples.petclinic.owner;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +29,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
@@ -45,11 +49,27 @@ class VideoController {
     }
 
     @GetMapping("/owners/videos/{id}")
-    public Map<String, String> video(@PathVariable Integer id) throws Exception {
+    public Map<String, Object> video(@PathVariable Integer id) throws Exception {
+        String path = videosUrl.toString() + "/videos";
+        Integer body = id;
+        return post(body, path);
+    }
+
+    @PostMapping("/owners/videos/{id}")
+    public Map<String, Object> rate(@PathVariable Integer id,
+            @RequestBody Map<String, Object> body) throws Exception {
+        body = new LinkedHashMap<>(body);
+        body.put("id", id);
+        String path = videosUrl.toString() + "/ratings";
+        return post(body, path);
+    }
+
+    private Map<String, Object> post(Object body, String path) throws URISyntaxException {
         return template.exchange(
-                RequestEntity.post(new URI(videosUrl.toString() + "/videos"))
-                        .accept(MediaType.APPLICATION_JSON).body(Arrays.asList(id)),
-                new ParameterizedTypeReference<List<Map<String, String>>>() {
+                RequestEntity.post(new URI(path)).accept(MediaType.APPLICATION_JSON)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body(Arrays.asList(body)),
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {
                 }).getBody().iterator().next();
     }
 }

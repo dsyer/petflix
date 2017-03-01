@@ -40,23 +40,27 @@ public class ThymeleafTemplateConfiguration {
     @Bean
     public ITemplateResolver remoteTemplateResolver(
             @Value("${services.video.uri}") URI videosUrl) {
-        return new UrlTemplateResolver() {
+        UrlTemplateResolver resolver = new UrlTemplateResolver() {
             @Override
             protected ITemplateResource computeTemplateResource(
                     IEngineConfiguration configuration, String ownerTemplate,
                     String template, String resourceName, String characterEncoding,
                     Map<String, Object> templateResolutionAttributes) {
-                if (!resourceName.startsWith("http:") && !resourceName.startsWith("https:")) {
+                if (!resourceName.startsWith("http:")
+                        && !resourceName.startsWith("https:")) {
                     return null;
                 }
                 UriComponents videos = UriComponentsBuilder.fromUri(videosUrl).build();
-                resourceName = UriComponentsBuilder.fromHttpUrl(resourceName).host(videos.getHost())
-                        .scheme(videos.getScheme()).port(videos.getPort()).build().toString();
+                resourceName = UriComponentsBuilder.fromHttpUrl(resourceName)
+                        .host(videos.getHost()).scheme(videos.getScheme())
+                        .port(videos.getPort()).build().toString();
                 return super.computeTemplateResource(configuration, ownerTemplate,
                         template, resourceName, characterEncoding,
                         templateResolutionAttributes);
             }
         };
+        resolver.setCacheable(false); // devtime only?
+        return resolver;
     }
 
 }
