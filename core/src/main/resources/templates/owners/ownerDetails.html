@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{fragments/layout :: layout (template=~{::body},menu='owners',script=~{http://videos/templates/pets.html::script})}">
+  th:replace="~{fragments/layout :: layout (template=~{::body},menu='owners',script=~{http://videos/js/app.js})}">
 
 <body>
 
@@ -53,7 +53,7 @@
           <dd>{{pet.type.name}}</dd>
         </dl>
       </td>
-      <td th:include="http://videos/templates/pets.html::pets"></td>
+      <td th:include="http://videos/templates/pet.html"></td>
       <td valign="top">
         <table class="table-condensed">
           <thead>
