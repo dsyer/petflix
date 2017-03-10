@@ -16,10 +16,6 @@
 
 package org.springframework.cloud.function.wiretap;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -27,16 +23,15 @@ import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 
 import org.springframework.aop.framework.ProxyFactoryBean;
-import org.springframework.beans.factory.annotation.AnnotatedBeanDefinition;
-import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
+import org.springframework.core.ResolvableType;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationAttributes;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.type.AnnotationMetadata;
-import org.springframework.core.type.filter.AbstractTypeHierarchyTraversingFilter;
-import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
@@ -53,70 +48,40 @@ public class WiretapRegistrar implements ImportBeanDefinitionRegistrar {
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata,
             BeanDefinitionRegistry registry) {
-        Set<String> basePackages = getPackagesToScan(metadata);
-        ClassPathScanningCandidateComponentProvider scanner = getClassPathScanner();
-        for (String pkg : basePackages) {
-            Set<BeanDefinition> components = scanner.findCandidateComponents(pkg);
-            for (BeanDefinition component : components) {
-                Class<?> type = ClassUtils.resolveClassName(component.getBeanClassName(),
-                        null);
-                WiretapRegistrar.registerBeanDefinitions(type,
-                        StringUtils.uncapitalize(type.getSimpleName()), registry);
-            }
+        AnnotationAttributes attrs = AnnotatedElementUtils.getMergedAnnotationAttributes(
+                ClassUtils.resolveClassName(metadata.getClassName(), null),
+                EnableWiretap.class);
+        for (Class<?> type : collectClasses(attrs, metadata.getClassName())) {
+            WiretapRegistrar.registerBeanDefinitions(type,
+                    StringUtils.uncapitalize(type.getSimpleName()), registry);
         }
     }
 
-    private ClassPathScanningCandidateComponentProvider getClassPathScanner() {
-        ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(
-                false) {
-            protected boolean isCandidateComponent(
-                    AnnotatedBeanDefinition beanDefinition) {
-                AnnotationMetadata metadata = beanDefinition.getMetadata();
-                return metadata.isIndependent() && metadata.isInterface();
-            }
-        };
-        scanner.addIncludeFilter(new AbstractTypeHierarchyTraversingFilter(true, true) {
-            @Override
-            protected Boolean matchInterface(String interfaceName) {
-                return interfaceName.equals(Consumer.class.getName());
-            }
-        });
-        return scanner;
-    }
-
-    private Set<String> getPackagesToScan(AnnotationMetadata metadata) {
-        AnnotationAttributes attributes = AnnotationAttributes
-                .fromMap(metadata.getAnnotationAttributes(WiretapScan.class.getName()));
-        String[] basePackages = attributes.getStringArray("basePackages");
-        Class<?>[] basePackageClasses = attributes.getClassArray("basePackageClasses");
-        Set<String> packagesToScan = new LinkedHashSet<String>();
-        packagesToScan.addAll(Arrays.asList(basePackages));
-        for (Class<?> basePackageClass : basePackageClasses) {
-            packagesToScan.add(ClassUtils.getPackageName(basePackageClass));
-        }
-        if (packagesToScan.isEmpty()) {
-            String packageName = ClassUtils.getPackageName(metadata.getClassName());
-            Assert.state(!StringUtils.isEmpty(packageName),
-                    "@WiretapScan cannot be used with the default package");
-            return Collections.singleton(packageName);
-        }
-        return packagesToScan;
+    private Class<?>[] collectClasses(AnnotationAttributes attrs, String className) {
+        EnableWiretap enableBinding = AnnotationUtils.synthesizeAnnotation(attrs,
+                EnableWiretap.class, ClassUtils.resolveClassName(className, null));
+        return enableBinding.value();
     }
 
     private static void registerBeanDefinitions(Class<?> type, String name,
             BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder consumer = BeanDefinitionBuilder
-                .genericBeanDefinition(ConsumerProxyFactory.class);
+                .rootBeanDefinition(ConsumerProxyFactory.class);
         FluxProcessor<Object, Object> emitter = UnicastProcessor.<Object>create()
                 .serialize();
-        consumer.addPropertyValue("interfaces", type);
+        consumer.addPropertyValue("interfaces", Consumer.class);
         consumer.addConstructorArgValue(emitter);
-        registry.registerBeanDefinition(name, consumer.getBeanDefinition());
+        RootBeanDefinition bean = (RootBeanDefinition) consumer.getBeanDefinition();
+        bean.setTargetType(ResolvableType.forClassWithGenerics(Consumer.class, type));
+        registry.registerBeanDefinition(name + "Consumer", bean);
         BeanDefinitionBuilder supplier = BeanDefinitionBuilder
-                .genericBeanDefinition(SupplierProxyFactory.class);
+                .rootBeanDefinition(SupplierProxyFactory.class);
         supplier.addPropertyValue("interfaces", Supplier.class);
         supplier.addConstructorArgValue(emitter);
-        registry.registerBeanDefinition(name + "Supplier", supplier.getBeanDefinition());
+        RootBeanDefinition output = (RootBeanDefinition) supplier.getBeanDefinition();
+        output.setTargetType(ResolvableType.forClassWithGenerics(Supplier.class,
+                ResolvableType.forClassWithGenerics(Flux.class, type)));
+        registry.registerBeanDefinition(name + "Supplier", output);
     }
 
 }
