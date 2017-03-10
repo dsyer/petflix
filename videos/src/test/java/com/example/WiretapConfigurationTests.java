@@ -16,46 +16,56 @@
 
 package com.example;
 
+import java.time.Duration;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import reactor.core.publisher.Flux;
+import reactor.test.StepVerifier;
 
 /**
  * @author Dave Syer
  *
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-public class VideoApplicationTests {
+@SpringBootTest
+public class WiretapConfigurationTests {
 
-    @LocalServerPort
-    private int port;
     @Autowired
-    private TestRestTemplate rest;
+    private Consumer<Rating> wiretap;
+
+    @Autowired
+    private Supplier<Flux<Rating>> output;
 
     @Test
-    public void home() {
-        assertThat(rest.getForObject("/templates/pet.html", String.class)).isNotNull();
+    public void test() {
+        Flux<Rating> flux = output.get();
+        // @formatter:off
+        StepVerifier.create(flux.log())
+            .then(() -> wiretap.accept(new Rating())) 
+            .expectNextCount(1)
+            .thenCancel()
+            .verify(Duration.ofMillis(500L));
+        // @formatter:on
     }
 
     @Test
-    public void post() {
-        assertThat(rest.postForObject("/videos", 1, String.class))
-                .contains("https://www.youtube.com");
-    }
-
-    @Test
-    public void ratings() {
-        assertThat(rest.postForObject("/ratings", new Rating(), String.class))
-                .contains("https://www.youtube.com");
+    public void again() {
+        Flux<Rating> flux = output.get();
+        // @formatter:off
+        StepVerifier.create(flux.log())
+            .then(() -> wiretap.accept(new Rating())) 
+            .expectNextCount(1)
+            .thenCancel()
+            .verify(Duration.ofMillis(500L));
+        // @formatter:on
     }
 
 }

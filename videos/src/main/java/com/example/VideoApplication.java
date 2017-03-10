@@ -1,15 +1,18 @@
 package com.example;
 
 import java.util.Random;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.cloud.function.wiretap.WiretapScan;
 import org.springframework.context.annotation.Bean;
 
 import reactor.core.publisher.Flux;
 
 @SpringBootApplication
+@WiretapScan
 public class VideoApplication {
 
     @Bean
@@ -20,8 +23,8 @@ public class VideoApplication {
     }
 
     @Bean
-    public Function<Flux<Rating>, Flux<Video>> ratings() {
-        return ratings -> ratings.map(rating -> new Video(rating.getId(),
+    public Function<Flux<Rating>, Flux<Video>> ratings(Consumer<Rating> wiretap) {
+        return ratings -> ratings.doOnNext(wiretap).map(rating -> new Video(rating.getId(),
                 "https://www.youtube.com/embed/Jqi6v7D4t8M", rating.getStars())).log();
     }
 
@@ -29,6 +32,8 @@ public class VideoApplication {
         new SpringApplicationBuilder(VideoApplication.class).run(args);
     }
 }
+
+interface Wiretap extends Consumer<Rating> {}
 
 class Video {
 
