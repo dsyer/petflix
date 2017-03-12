@@ -16,60 +16,37 @@
 package org.springframework.samples.petclinic.owner;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.web.client.RestTemplateBuilder;
-import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.MediaType;
-import org.springframework.http.RequestEntity;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
 
 /**
  * @author Dave Syer
  */
-@RestController
+@Controller
 class VideoController {
-    private RestTemplate template;
 
     @Value("${services.video.uri}")
     private URI videosUrl;
 
-    VideoController(RestTemplateBuilder builder) {
-        template = builder.build();
-    }
-
     @GetMapping("/owners/videos/{id}")
-    public Map<String, Object> video(@PathVariable Integer id) throws Exception {
-        String path = videosUrl.toString() + "/videos";
-        Integer body = id;
-        return post(body, path);
+    public Supplier<String> videos(@PathVariable Integer id) throws Exception {
+        return () -> videosUrl.toString() + "/videos/" + id;
     }
 
     @PostMapping("/owners/videos/{id}")
-    public Map<String, Object> rate(@PathVariable Integer id,
+    public Supplier<String> rater(@PathVariable Integer id,
             @RequestBody Map<String, Object> body) throws Exception {
-        body = new LinkedHashMap<>(body);
         body.put("id", id);
-        String path = videosUrl.toString() + "/ratings";
-        return post(body, path);
+        return () -> {
+            return videosUrl.toString() + "/ratings";
+        };
     }
 
-    private Map<String, Object> post(Object body, String path) throws URISyntaxException {
-        return template.exchange(
-                RequestEntity.post(new URI(path)).accept(MediaType.APPLICATION_JSON)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .body(Arrays.asList(body)),
-                new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                }).getBody().iterator().next();
-    }
 }
