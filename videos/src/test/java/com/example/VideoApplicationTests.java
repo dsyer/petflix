@@ -24,6 +24,8 @@ import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -56,6 +58,22 @@ public class VideoApplicationTests {
     public void ratings() {
         assertThat(rest.postForObject("/ratings", new Rating(), String.class))
                 .contains("https://www.youtube.com");
+    }
+
+    @Test
+    public void wiretap() {
+        rest.postForObject("/ratings", new Rating(), String.class);
+        ResponseEntity<String> result = rest.getForEntity("/ratingSupplier", String.class);
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).contains("stars");
+    }
+
+    @Test
+    public void twice() {
+        rest.postForObject("/ratings", new Rating(), String.class);
+        ResponseEntity<String> result = rest.getForEntity("/ratingSupplier", String.class);
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody()).contains("stars");
     }
 
 }
