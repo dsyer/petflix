@@ -18,6 +18,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -53,6 +54,17 @@ public class ProductionConfigurationTests {
     }
 
     @Test
+    public void list() throws Exception {
+        assertThat(rest.exchange(
+                RequestEntity
+                        .post(rest.getRestTemplate().getUriTemplateHandler().expand(
+                                "/proxy"))
+                .body(Collections.singletonList(Collections.singletonMap("name", "foo"))),
+                new ParameterizedTypeReference<List<Bar>>() {
+                }).getBody().iterator().next().getName()).isEqualTo("foo");
+    }
+
+    @Test
     public void bodyless() throws Exception {
         assertThat(rest.postForObject("/proxy", Collections.singletonMap("name", "foo"),
                 Bar.class).getName()).isEqualTo("foo");
@@ -60,9 +72,13 @@ public class ProductionConfigurationTests {
 
     @Test
     public void entity() throws Exception {
-        assertThat(rest.postForObject("/proxy/entity",
-                Collections.singletonMap("name", "foobar"), Bar.class).getName())
-                        .isEqualTo("foobar");
+        assertThat(rest.exchange(
+                RequestEntity
+                        .post(rest.getRestTemplate().getUriTemplateHandler()
+                                .expand("/proxy/entity"))
+                        .body(Collections.singletonMap("name", "foo")),
+                new ParameterizedTypeReference<List<Bar>>() {
+                }).getBody().iterator().next().getName()).isEqualTo("foo");
     }
 
     @Test

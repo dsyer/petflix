@@ -25,7 +25,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 
 import javax.servlet.http.HttpServletResponse;
@@ -65,10 +64,22 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
 
     private RequestResponseBodyMethodProcessor delegate;
 
+    private boolean implicitLists = true;
+
     public ProxyResponseReturnValueHandler(RestTemplateBuilder builder) {
         template = builder.build();
         delegate = new RequestResponseBodyMethodProcessor(
                 template.getMessageConverters());
+    }
+
+    /**
+     * Flag to indicate that if a supplier emits a single item then it should be wrapped
+     * into a list before sending downstream.
+     * 
+     * @param implicitLists the flag value to set
+     */
+    public void setImplicitLists(boolean implicitLists) {
+        this.implicitLists = implicitLists;
     }
 
     @Override
@@ -90,8 +101,8 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
         @SuppressWarnings("unchecked")
         Supplier<Object> supplier = (Supplier<Object>) returnValue;
         Object request = supplier.get();
+        boolean bodyIsList = false;
         ResponseEntity<List<Object>> response;
-        Object body = null;
         if (request instanceof String || request instanceof URI) {
             HeadersBuilder<?> entity;
             URI path = (request instanceof URI) ? (URI) request
@@ -128,8 +139,14 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
                     String name = Conventions.getVariableNameForParameter(requestBody);
                     BindingResult result = (BindingResult) mavContainer.getModel()
                             .get(BindingResult.MODEL_KEY_PREFIX + name);
-                    body = result.getModel().get(name);
-                    built = ((BodyBuilder) entity).body(Arrays.asList(body));
+                    Object body = result.getModel().get(name);
+                    if (this.implicitLists && !(body instanceof Collection
+                            || ObjectUtils.isArray(body))) {
+                        body = Arrays.asList(body);
+                    } else {
+                        bodyIsList = true;
+                    }
+                    built = ((BodyBuilder) entity).body(body);
                 }
             }
             if (built == null) {
@@ -139,10 +156,13 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
         }
         else {
             RequestEntity<?> entity = (RequestEntity<?>) request;
-            if (!(entity.getBody() instanceof Collection
+            if (this.implicitLists && !(entity.getBody() instanceof Collection
                     || ObjectUtils.isArray(entity.getBody()))) {
-                entity = new RequestEntity<>(Arrays.asList(entity.getBody()), entity.getHeaders(),
-                        entity.getMethod(), entity.getUrl(), List.class);
+                entity = new RequestEntity<>(Arrays.asList(entity.getBody()),
+                        entity.getHeaders(), entity.getMethod(), entity.getUrl(),
+                        List.class);
+            } else {
+                bodyIsList = true;
             }
             response = exchange(entity);
         }
@@ -155,7 +175,10 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
             }
         }
         if (response.getBody() != null && !response.getBody().isEmpty()) {
-            Object result = response.getBody().iterator().next();
+            Object result = response.getBody();
+            if (!bodyIsList && implicitLists) {
+                result = response.getBody().iterator().next();
+            }
             delegate.handleReturnValue(result, returnType, mavContainer, webRequest);
         }
     }
@@ -177,13 +200,13 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
             }
         }
         MethodParameter input = new MethodParameter(
-                ClassUtils.getMethod(getClass(), "body", Map.class), 0);
+                ClassUtils.getMethod(getClass(), "body", Object.class), 0);
         delegate.resolveArgument(input, mavContainer, webRequest,
                 new DefaultDataBinderFactory(new ConfigurableWebBindingInitializer()));
         return input;
     }
 
-    public Map<String, Object> body(@RequestBody Map<String, Object> body) {
+    public Object body(@RequestBody Object body) {
         return body;
     }
 
