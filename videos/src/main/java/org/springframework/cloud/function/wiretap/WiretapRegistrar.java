@@ -16,6 +16,7 @@
 
 package org.springframework.cloud.function.wiretap;
 
+import java.time.Duration;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -111,7 +112,10 @@ class SupplierProxyFactory extends ProxyFactoryBean implements MethodInterceptor
     private final Flux<Object> sink;
 
     public SupplierProxyFactory(FluxProcessor<Object, Object> emitter) {
-        sink = emitter.publish().autoConnect();
+        // TODO: maybe think about the contract for clients a bit more. Right now we allow
+        // successive clients to receive duplicate data if they subscribe within 100ms of
+        // each other (c.f. the timeout for closing the client connection is 1000ms).
+        sink = emitter.log().replay(Duration.ofMillis(100L)).autoConnect().log();
         addAdvice(this);
     }
 

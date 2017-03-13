@@ -72,6 +72,8 @@ public class VideoApplicationTests {
     public void twice() {
         rest.postForObject("/ratings", new Rating(), String.class);
         ResponseEntity<String> result = rest.getForEntity("/ratingSupplier", String.class);
+        rest.postForObject("/ratings", new Rating(), String.class);
+        result = rest.getForEntity("/ratingSupplier", String.class);
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).contains("stars");
     }
