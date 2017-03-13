@@ -18,12 +18,17 @@ package org.spingframework.cloud.function.web;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+
+import javax.servlet.http.HttpServletResponse;
 
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.Conventions;
@@ -32,10 +37,18 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.RequestEntity.BodyBuilder;
+import org.springframework.http.RequestEntity.HeadersBuilder;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.support.ConfigurableWebBindingInitializer;
+import org.springframework.web.bind.support.DefaultDataBinderFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
@@ -52,49 +65,10 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
 
     private RequestResponseBodyMethodProcessor delegate;
 
-    ProxyResponseReturnValueHandler(RestTemplateBuilder builder) {
+    public ProxyResponseReturnValueHandler(RestTemplateBuilder builder) {
         template = builder.build();
         delegate = new RequestResponseBodyMethodProcessor(
                 template.getMessageConverters());
-    }
-
-    private Map<String, Object> post(Object body, String path) throws URISyntaxException {
-        BodyBuilder request = RequestEntity.post(new URI(path))
-                .contentType(MediaType.APPLICATION_JSON);
-        return exchange(request, body);
-    }
-
-    private Map<String, Object> put(Object body, String path) throws URISyntaxException {
-        BodyBuilder request = RequestEntity.put(new URI(path))
-                .contentType(MediaType.APPLICATION_JSON);
-        return exchange(request, body);
-    }
-
-    private Map<String, Object> delete(String path) throws URISyntaxException {
-        return template.exchange(
-                RequestEntity.delete(new URI(path)).accept(MediaType.APPLICATION_JSON)
-                        .build(),
-                new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                }).getBody().iterator().next();
-    }
-
-    private Map<String, Object> exchange(BodyBuilder request, Object body)
-            throws URISyntaxException {
-        return template
-                .exchange(
-                        request.accept(MediaType.APPLICATION_JSON)
-                                .body(Arrays.asList(body)),
-                        new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                        })
-                .getBody().iterator().next();
-    }
-
-    private Map<String, Object> get(String path) throws URISyntaxException {
-        return template.exchange(
-                RequestEntity.get(new URI(path)).accept(MediaType.APPLICATION_JSON)
-                        .build(),
-                new ParameterizedTypeReference<List<Map<String, Object>>>() {
-                }).getBody().iterator().next();
     }
 
     @Override
@@ -103,8 +77,10 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
             return false;
         }
         ParameterizedType type = (ParameterizedType) returnType.getGenericParameterType();
+        Type param = type.getActualTypeArguments()[0];
         return type.getRawType().equals(Supplier.class)
-                && type.getActualTypeArguments()[0].equals(String.class);
+                && (param.equals(String.class) || param.equals(URI.class)
+                        || param.getTypeName().startsWith(RequestEntity.class.getName()));
     }
 
     @Override
@@ -112,36 +88,87 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
             ModelAndViewContainer mavContainer, NativeWebRequest webRequest)
                     throws Exception {
         @SuppressWarnings("unchecked")
-        Supplier<String> supplier = (Supplier<String>) returnValue;
-        String path = supplier.get();
-        Map<String, Object> map;
-        if (returnType.hasMethodAnnotation(GetMapping.class)) {
-            map = get(path);
-        }
-        else if (returnType.hasMethodAnnotation(DeleteMapping.class)) {
-            map = delete(path);
-        }
-        else {
-            Object body = null;
-            MethodParameter requestBody = getRequestBody(returnType);
-            if (requestBody != null) {
-                String name = Conventions.getVariableNameForParameter(requestBody);
-                BindingResult result = (BindingResult) mavContainer.getModel()
-                        .get(BindingResult.MODEL_KEY_PREFIX + name);
-                body = result.getModel().get(name);
+        Supplier<Object> supplier = (Supplier<Object>) returnValue;
+        Object request = supplier.get();
+        ResponseEntity<List<Object>> response;
+        Object body = null;
+        if (request instanceof String || request instanceof URI) {
+            HeadersBuilder<?> entity;
+            URI path = (request instanceof URI) ? (URI) request
+                    : new URI((String) request);
+            if (returnType.hasMethodAnnotation(GetMapping.class)) {
+                entity = (HeadersBuilder<?>) RequestEntity.get(path);
             }
-            if (returnType.hasMethodAnnotation(DeleteMapping.class)) {
-                map = post(body, path);
+            else if (returnType.hasMethodAnnotation(DeleteMapping.class)) {
+                entity = (HeadersBuilder<?>) RequestEntity.delete(path);
+            }
+            else if (returnType.hasMethodAnnotation(PostMapping.class)) {
+                entity = (HeadersBuilder<?>) RequestEntity.post(path);
             }
             else {
-                map = put(body, path);
+                entity = (HeadersBuilder<?>) RequestEntity.put(path);
             }
-
+            boolean accept = false;
+            for (Iterator<String> iter = webRequest.getHeaderNames(); iter.hasNext();) {
+                String key = iter.next();
+                if (key.toLowerCase().equals("accept")) {
+                    accept = true;
+                }
+                entity.header(key, webRequest.getHeaderValues(key));
+            }
+            if (!accept) {
+                entity.header("Accept", MediaType.APPLICATION_JSON_VALUE);
+            }
+            RequestEntity<?> built = null;
+            if (returnType.hasMethodAnnotation(PostMapping.class)
+                    || returnType.hasMethodAnnotation(PutMapping.class)) {
+                MethodParameter requestBody = getRequestBody(returnType, mavContainer,
+                        webRequest);
+                if (requestBody != null) {
+                    String name = Conventions.getVariableNameForParameter(requestBody);
+                    BindingResult result = (BindingResult) mavContainer.getModel()
+                            .get(BindingResult.MODEL_KEY_PREFIX + name);
+                    body = result.getModel().get(name);
+                    built = ((BodyBuilder) entity).body(Arrays.asList(body));
+                }
+            }
+            if (built == null) {
+                built = entity.build();
+            }
+            response = exchange(built);
         }
-        delegate.handleReturnValue(map, returnType, mavContainer, webRequest);
+        else {
+            RequestEntity<?> entity = (RequestEntity<?>) request;
+            if (!(entity.getBody() instanceof Collection
+                    || ObjectUtils.isArray(entity.getBody()))) {
+                entity = new RequestEntity<>(Arrays.asList(entity.getBody()), entity.getHeaders(),
+                        entity.getMethod(), entity.getUrl(), List.class);
+            }
+            response = exchange(entity);
+        }
+        HttpServletResponse servletResponse = webRequest
+                .getNativeResponse(HttpServletResponse.class);
+        if (servletResponse != null) {
+            servletResponse.setStatus(response.getStatusCodeValue());
+            for (String key : response.getHeaders().keySet()) {
+                servletResponse.setHeader(key, response.getHeaders().getFirst(key));
+            }
+        }
+        if (response.getBody() != null && !response.getBody().isEmpty()) {
+            Object result = response.getBody().iterator().next();
+            delegate.handleReturnValue(result, returnType, mavContainer, webRequest);
+        }
     }
 
-    private MethodParameter getRequestBody(MethodParameter returnType) {
+    private ResponseEntity<List<Object>> exchange(RequestEntity<?> entity)
+            throws URISyntaxException {
+        return template.exchange(entity, new ParameterizedTypeReference<List<Object>>() {
+        });
+    }
+
+    private MethodParameter getRequestBody(MethodParameter returnType,
+            ModelAndViewContainer mavContainer, NativeWebRequest webRequest)
+                    throws Exception {
         Method method = returnType.getMethod();
         for (int i = 0; i < method.getParameters().length; i++) {
             MethodParameter param = new MethodParameter(method, i);
@@ -149,7 +176,15 @@ public class ProxyResponseReturnValueHandler implements HandlerMethodReturnValue
                 return param;
             }
         }
-        return returnType;
+        MethodParameter input = new MethodParameter(
+                ClassUtils.getMethod(getClass(), "body", Map.class), 0);
+        delegate.resolveArgument(input, mavContainer, webRequest,
+                new DefaultDataBinderFactory(new ConfigurableWebBindingInitializer()));
+        return input;
+    }
+
+    public Map<String, Object> body(@RequestBody Map<String, Object> body) {
+        return body;
     }
 
 }
