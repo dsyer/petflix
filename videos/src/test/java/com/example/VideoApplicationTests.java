@@ -45,7 +45,12 @@ public class VideoApplicationTests {
 
     @Test
     public void home() {
-        assertThat(rest.getForObject("/templates/pet.html", String.class)).isNotNull();
+        assertThat(rest.getForObject("/resources/templates/pet.html", String.class)).contains("ng-repeat=\"star in pet.stars\"");
+    }
+
+    @Test
+    public void scripts() {
+        assertThat(rest.getForObject("/resources/js/app.js", String.class)).contains("$http");
     }
 
     @Test
