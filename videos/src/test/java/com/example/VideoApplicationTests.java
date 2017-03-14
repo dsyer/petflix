@@ -16,71 +16,86 @@
 
 package com.example;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.embedded.LocalServerPort;
+import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * @author Dave Syer
  *
  */
 @RunWith(SpringRunner.class)
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest
+@AutoConfigureMockMvc
+@AutoConfigureRestDocs(outputDir = "target/snippets")
 public class VideoApplicationTests {
 
-    @LocalServerPort
-    private int port;
     @Autowired
-    private TestRestTemplate rest;
+    private MockMvc rest;
+
+    @Autowired
+    private ObjectMapper mapper;
 
     @Test
-    public void home() {
-        assertThat(rest.getForObject("/resources/templates/pet.html", String.class)).contains("ng-repeat=\"star in pet.stars\"");
+    public void home() throws Exception {
+        rest.perform(get("/resources/templates/pet.html"))
+                .andExpect(content()
+                        .string(containsString("ng-repeat=\"star in pet.stars\"")))
+                .andDo(document("pet"));
     }
 
     @Test
-    public void scripts() {
-        assertThat(rest.getForObject("/resources/js/app.js", String.class)).contains("$http");
+    public void scripts() throws Exception {
+        rest.perform(get("/resources/js/app.js"))
+                .andExpect(content().string(containsString("$http")))
+                .andDo(document("app"));
     }
 
     @Test
-    public void post() {
-        assertThat(rest.postForObject("/videos", 1, String.class))
-                .contains("https://www.youtube.com");
+    public void videos() throws Exception {
+        rest.perform(post("/videos").content("1"))
+                .andExpect(content().string(containsString("https://www.youtube.com")))
+                .andDo(document("videos"));
     }
 
     @Test
-    public void ratings() {
-        assertThat(rest.postForObject("/ratings", new Rating(), String.class))
-                .contains("https://www.youtube.com");
+    public void ratings() throws Exception {
+        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())))
+                .andExpect(content().string(containsString("https://www.youtube.com")))
+                .andDo(document("ratings"));
     }
 
     @Test
-    public void wiretap() {
-        rest.postForObject("/ratings", new Rating(), String.class);
-        ResponseEntity<String> result = rest.getForEntity("/ratingSupplier", String.class);
-        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(result.getBody()).contains("stars");
+    public void wiretap() throws Exception {
+        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())));
+        rest.perform(get("/ratingSupplier")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("stars")))
+                .andDo(document("wiretap"));
     }
 
     @Test
-    public void twice() {
-        rest.postForObject("/ratings", new Rating(), String.class);
-        ResponseEntity<String> result = rest.getForEntity("/ratingSupplier", String.class);
-        rest.postForObject("/ratings", new Rating(), String.class);
-        result = rest.getForEntity("/ratingSupplier", String.class);
-        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(result.getBody()).contains("stars");
+    public void twice() throws Exception {
+        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())));
+        rest.perform(get("/ratingSupplier")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("stars")));
+        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())));
+        rest.perform(get("/ratingSupplier")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("stars")));
     }
 
 }

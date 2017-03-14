@@ -4,10 +4,12 @@ import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.cloud.function.wiretap.EnableWiretap;
 import org.springframework.context.annotation.Bean;
+import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
 
@@ -15,22 +17,38 @@ import reactor.core.publisher.Flux;
 @EnableWiretap(Rating.class)
 public class VideoApplication {
 
+    @Autowired
+    private VideoRepository repo;
+
     @Bean
     public Function<Flux<Integer>, Flux<Video>> videos() {
-        return ids -> ids
-                .map(id -> new Video(id, "https://www.youtube.com/embed/Jqi6v7D4t8M"))
-                .log();
+        return ids -> ids.map(id -> repo.findById(id)).log();
     }
 
     @Bean
     public Function<Flux<Rating>, Flux<Video>> ratings(Consumer<Rating> wiretap) {
-        return ratings -> ratings.doOnNext(wiretap).map(rating -> new Video(rating.getId(),
-                "https://www.youtube.com/embed/Jqi6v7D4t8M", rating.getStars())).log();
+        return ratings -> ratings.doOnNext(wiretap)
+                .map(rating -> repo.findById(rating.getId()).rate(rating.getStars()))
+                .log();
     }
 
     public static void main(String[] args) {
         new SpringApplicationBuilder(VideoApplication.class).run(args);
     }
+}
+
+interface VideoRepository {
+    Video findById(Integer id);
+}
+
+@Component
+class DumbVideoRepository implements VideoRepository {
+
+    @Override
+    public Video findById(Integer id) {
+        return new Video(id, "https://www.youtube.com/embed/Jqi6v7D4t8M");
+    }
+
 }
 
 class Video {
@@ -42,6 +60,7 @@ class Video {
         url = value;
         this.stars = stars;
     }
+
     Video(int id, String value) {
         this.url = value;
         this.stars = calculateStars(id);
@@ -65,6 +84,11 @@ class Video {
 
     public void setStars(int stars) {
         this.stars = stars;
+    }
+
+    public Video rate(int stars) {
+        this.stars = stars;
+        return this;
     }
 }
 
