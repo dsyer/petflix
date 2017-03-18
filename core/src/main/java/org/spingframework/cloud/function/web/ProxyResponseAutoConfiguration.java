@@ -20,11 +20,14 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
@@ -35,20 +38,24 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter
 @Configuration
 @ConditionalOnWebApplication
 @ConditionalOnClass({ HandlerMethodReturnValueHandler.class })
+@EnableConfigurationProperties(ProxyProperties.class)
 public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
 
     @Autowired
     private ApplicationContext context;
 
     @Bean
-    public ProxyResponseReturnValueHandler fluxReturnValueHandler(RestTemplateBuilder builder) {
-        return new ProxyResponseReturnValueHandler(builder);
+    @ConditionalOnMissingBean
+    public ProxyExchangeArgumentResolver proxyExchangeBuilderArgumentResolver(RestTemplateBuilder builder, ProxyProperties proxy) {
+        ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(builder.build());
+        resolver.setHeaders(proxy.convertHeaders());
+        return resolver;
     }
-
+    
     @Override
-    public void addReturnValueHandlers(
-            List<HandlerMethodReturnValueHandler> returnValueHandlers) {
-        returnValueHandlers.add(context.getBean(ProxyResponseReturnValueHandler.class));
+    public void addArgumentResolvers(
+            List<HandlerMethodArgumentResolver> argumentResolvers) {
+        argumentResolvers.add(context.getBean(ProxyExchangeArgumentResolver.class));
     }
 
 }

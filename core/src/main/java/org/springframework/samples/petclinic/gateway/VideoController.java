@@ -16,37 +16,40 @@
 package org.springframework.samples.petclinic.gateway;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.Map;
-import java.util.function.Supplier;
+
+import org.spingframework.cloud.function.web.ProxyExchange;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Controller;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 
 /**
  * @author Dave Syer
  */
-@Controller
+@RestController
 class VideoController {
 
     @Value("${services.video.uri}")
     private URI videosUrl;
 
     @GetMapping("/owners/videos/{id}")
-    public Supplier<String> videos(@PathVariable Integer id) throws Exception {
-        return () -> videosUrl.toString() + "/videos/" + id;
+    public ResponseEntity<?> videos(@PathVariable Integer id, ProxyExchange proxy)
+            throws Exception {
+        return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
     @PostMapping("/owners/videos/{id}")
-    public Supplier<String> rater(@PathVariable Integer id,
-            @RequestBody Map<String, Object> body) throws Exception {
+    public ResponseEntity<?> rater(@PathVariable Integer id,
+            @RequestBody Map<String, Object> body, ProxyExchange proxy) throws Exception {
         body.put("id", id);
-        return () -> {
-            return videosUrl.toString() + "/ratings";
-        };
+        return proxy.uri(videosUrl.toString() + "/ratings").body(Arrays.asList(body))
+                .postFirst();
     }
 
 }
