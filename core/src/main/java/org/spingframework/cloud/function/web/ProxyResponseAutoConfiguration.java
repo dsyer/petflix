@@ -16,6 +16,7 @@
 
 package org.spingframework.cloud.function.web;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +28,9 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.client.DefaultResponseErrorHandler;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
@@ -47,7 +51,9 @@ public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
     @Bean
     @ConditionalOnMissingBean
     public ProxyExchangeArgumentResolver proxyExchangeBuilderArgumentResolver(RestTemplateBuilder builder, ProxyProperties proxy) {
-        ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(builder.build());
+        RestTemplate template = builder.build();
+        template.setErrorHandler(new NoOpResponseErrorHandler());
+        ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(template);
         resolver.setHeaders(proxy.convertHeaders());
         return resolver;
     }
@@ -58,4 +64,11 @@ public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
         argumentResolvers.add(context.getBean(ProxyExchangeArgumentResolver.class));
     }
 
+    private static class NoOpResponseErrorHandler extends DefaultResponseErrorHandler {
+
+        @Override
+        public void handleError(ClientHttpResponse response) throws IOException {
+        }
+
+    }
 }

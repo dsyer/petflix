@@ -22,6 +22,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -57,6 +58,12 @@ public class ProductionConfigurationTests {
     @Test
     public void get() throws Exception {
         assertThat(rest.getForObject("/proxy/0", Foo.class).getName()).isEqualTo("bye");
+    }
+
+    @Test
+    public void missing() throws Exception {
+        assertThat(rest.getForEntity("/proxy/missing/0", Foo.class).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
@@ -122,6 +129,12 @@ public class ProductionConfigurationTests {
             public ResponseEntity<?> proxyFoos(@PathVariable Integer id,
                     ProxyExchange proxy) throws Exception {
                 return proxy.uri(home.toString() + "/foos/" + id).get();
+            }
+
+            @GetMapping("/proxy/missing/{id}")
+            public ResponseEntity<?> proxyMissing(@PathVariable Integer id,
+                    ProxyExchange proxy) throws Exception {
+                return proxy.uri(home.toString() + "/missing/" + id).get();
             }
 
             @GetMapping("/proxy")
