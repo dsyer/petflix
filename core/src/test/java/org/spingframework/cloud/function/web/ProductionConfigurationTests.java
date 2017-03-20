@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -58,6 +59,11 @@ public class ProductionConfigurationTests {
     @Test
     public void get() throws Exception {
         assertThat(rest.getForObject("/proxy/0", Foo.class).getName()).isEqualTo("bye");
+    }
+
+    @Test
+    public void path() throws Exception {
+        assertThat(rest.getForObject("/proxy/path/1", Foo.class).getName()).isEqualTo("foo");
     }
 
     @Test
@@ -131,6 +137,12 @@ public class ProductionConfigurationTests {
                 return proxy.uri(home.toString() + "/foos/" + id).get();
             }
 
+            @GetMapping("/proxy/path/**")
+            public ResponseEntity<?> proxyPath(ProxyExchange proxy, UriComponentsBuilder uri) throws Exception {
+                String path = proxy.path("/proxy/path/");
+                return proxy.uri(home.toString() + "/foos/" + path).get();
+            }
+
             @GetMapping("/proxy/missing/{id}")
             public ResponseEntity<?> proxyMissing(@PathVariable Integer id,
                     ProxyExchange proxy) throws Exception {
@@ -191,7 +203,7 @@ public class ProductionConfigurationTests {
 
             @GetMapping("/foos/{id}")
             public Foo foo(@PathVariable Integer id) {
-                return new Foo("bye");
+                return new Foo(id==1 ? "foo" : "bye");
             }
 
             @PostMapping("/bars")

@@ -44,6 +44,12 @@ class VideoController {
         return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
+    @GetMapping("/owners/videos/templates/**")
+    public ResponseEntity<?> templates(@PathVariable Integer id, ProxyExchange proxy)
+            throws Exception {
+        return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
+    }
+
     @PostMapping("/owners/videos/{id}")
     public ResponseEntity<?> rater(@PathVariable Integer id,
             @RequestBody Map<String, Object> body, ProxyExchange proxy) throws Exception {

@@ -34,7 +34,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.support.ModelAndViewContainer;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor;
 
 /**
@@ -85,6 +87,15 @@ public class ProxyExchange {
     public ProxyExchange headers(HttpHeaders headers) {
         this.headers.putAll(headers);
         return this;
+    }
+
+    public String path() {
+        return (String) this.webRequest.getAttribute(
+                HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE,
+                WebRequest.SCOPE_REQUEST);
+    }
+    public String path(String prefix) {
+        return path().substring(prefix.length());
     }
 
     public ProxyExchange uri(String uri) {
