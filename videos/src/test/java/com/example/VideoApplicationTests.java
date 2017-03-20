@@ -16,6 +16,8 @@
 
 package com.example;
 
+import java.util.Arrays;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.Test;
@@ -25,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.restdocs.AutoConfigureRestDocs;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -67,15 +70,26 @@ public class VideoApplicationTests {
     }
 
     @Test
-    public void videos() throws Exception {
-        rest.perform(post("/videos").content("1"))
+    public void video() throws Exception {
+        rest.perform(get("/videos/0").accept(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("https://www.youtube.com")))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andDo(document("video"));
+    }
+
+    @Test
+    public void videos() throws Exception {
+        rest.perform(post("/videos").content("1").accept(MediaType.APPLICATION_JSON))
+                .andExpect(content().string(containsString("https://www.youtube.com")))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andDo(document("videos"));
     }
 
     @Test
     public void ratings() throws Exception {
-        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())))
+        rest.perform(post("/ratings").contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(Arrays.asList(new Rating()))))
                 .andExpect(content().string(containsString("https://www.youtube.com")))
                 .andDo(document("ratings"));
     }

@@ -29,6 +29,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -53,6 +54,12 @@ public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
     public ProxyExchangeArgumentResolver proxyExchangeBuilderArgumentResolver(RestTemplateBuilder builder, ProxyProperties proxy) {
         RestTemplate template = builder.build();
         template.setErrorHandler(new NoOpResponseErrorHandler());
+        template.getMessageConverters().add(new ByteArrayHttpMessageConverter() {
+            @Override
+            public boolean supports(Class<?> clazz) {
+                return true;
+            }
+        });
         ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(template);
         resolver.setHeaders(proxy.convertHeaders());
         return resolver;

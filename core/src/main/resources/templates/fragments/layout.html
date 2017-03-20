@@ -98,7 +98,7 @@
   <script type="text/javascript" th:src="@{/webjars/jquery-ui/jquery-ui.min.js}"></script>
   <script type="text/javascript" th:src="@{/webjars/bootstrap/js/bootstrap.min.js}"></script>
   <script type="text/javascript" th:src="@{/webjars/angularjs/angular.min.js}"></script>
-  <th:block th:if="${script}"><script type="text/javascript" th:include="${script?:''}">
+  <th:block th:if="${script}"><script type="text/javascript" th:src="${script}">
         </script></th:block>
 </body>
 

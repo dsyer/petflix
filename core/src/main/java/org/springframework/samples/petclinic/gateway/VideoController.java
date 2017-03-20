@@ -44,18 +44,25 @@ class VideoController {
         return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
-    @GetMapping("/owners/videos/templates/**")
-    public ResponseEntity<?> templates(@PathVariable Integer id, ProxyExchange proxy)
-            throws Exception {
-        return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
-    }
-
     @PostMapping("/owners/videos/{id}")
     public ResponseEntity<?> rater(@PathVariable Integer id,
             @RequestBody Map<String, Object> body, ProxyExchange proxy) throws Exception {
         body.put("id", id);
         return proxy.uri(videosUrl.toString() + "/ratings").body(Arrays.asList(body))
                 .postFirst();
+    }
+
+    @GetMapping("/owners/videos/templates/**")
+    public ResponseEntity<?> templates(ProxyExchange proxy) throws Exception {
+        return proxy.uri(videosUrl.toString() + "/resources/templates"
+                + proxy.path("/owners/videos/templates")).get();
+    }
+
+    @GetMapping("/owners/videos/js/**")
+    public ResponseEntity<?> scripts(ProxyExchange proxy) throws Exception {
+        return proxy.uri(
+                videosUrl.toString() + "/resources/js" + proxy.path("/owners/videos/js"))
+                .get();
     }
 
 }

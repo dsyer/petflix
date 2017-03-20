@@ -67,6 +67,11 @@ public class ProductionConfigurationTests {
     }
 
     @Test
+    public void resource() throws Exception {
+        assertThat(rest.getForObject("/proxy/html/test.html", String.class)).contains("<body>Test");
+    }
+
+    @Test
     public void missing() throws Exception {
         assertThat(rest.getForEntity("/proxy/missing/0", Foo.class).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -141,6 +146,12 @@ public class ProductionConfigurationTests {
             public ResponseEntity<?> proxyPath(ProxyExchange proxy, UriComponentsBuilder uri) throws Exception {
                 String path = proxy.path("/proxy/path/");
                 return proxy.uri(home.toString() + "/foos/" + path).get();
+            }
+
+            @GetMapping("/proxy/html/**")
+            public ResponseEntity<?> proxyHtml(ProxyExchange proxy, UriComponentsBuilder uri) throws Exception {
+                String path = proxy.path("/proxy/html");
+                return proxy.uri(home.toString() + path).get();
             }
 
             @GetMapping("/proxy/missing/{id}")
