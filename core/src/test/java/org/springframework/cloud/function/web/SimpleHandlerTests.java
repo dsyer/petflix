@@ -1,4 +1,4 @@
-package org.spingframework.cloud.function.web;
+package org.springframework.cloud.function.web;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -10,8 +10,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.spingframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Bar;
-import org.spingframework.cloud.function.web.SimpleHandlerTests.TestApplication;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -20,6 +18,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Bar;
+import org.springframework.cloud.function.web.SimpleHandlerTests.TestApplication;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;

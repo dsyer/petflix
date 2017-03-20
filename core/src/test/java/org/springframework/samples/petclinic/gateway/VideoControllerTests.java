@@ -2,12 +2,12 @@ package org.springframework.samples.petclinic.gateway;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.spingframework.cloud.function.web.ProxyResponseAutoConfiguration;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.web.WebClientAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
+import org.springframework.cloud.function.web.ProxyResponseAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.spingframework.cloud.function.web;
+package org.springframework.cloud.function.web;
 
 import java.util.LinkedHashMap;
 import java.util.Map;

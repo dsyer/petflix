@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package org.spingframework.cloud.function.web;
+package org.springframework.cloud.function.web;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.core.Conventions;
 import org.springframework.core.MethodParameter;
@@ -45,6 +47,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestResponseBody
  */
 public class ProxyExchange {
 
+    public static Set<String> DEFAULT_SENSITIVE = new HashSet<>(
+            Arrays.asList("cookie", "authorization"));
+
     private static final ParameterizedTypeReference<List<Object>> LIST_TYPE = new ParameterizedTypeReference<List<Object>>() {
     };
 
@@ -61,6 +66,8 @@ public class ProxyExchange {
     private ModelAndViewContainer mavContainer;
 
     private WebDataBinderFactory binderFactory;
+
+    private Set<String> sensitive;
 
     private HttpHeaders headers = new HttpHeaders();
 
@@ -89,11 +96,22 @@ public class ProxyExchange {
         return this;
     }
 
+    public ProxyExchange sensitive(String... names) {
+        if (this.sensitive == null) {
+            this.sensitive = new HashSet<>();
+        }
+        for (String name : names) {
+            this.sensitive.add(name.toLowerCase());
+        }
+        return this;
+    }
+
     public String path() {
         return (String) this.webRequest.getAttribute(
                 HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE,
                 WebRequest.SCOPE_REQUEST);
     }
+
     public String path(String prefix) {
         return path().substring(prefix.length());
     }
@@ -145,7 +163,14 @@ public class ProxyExchange {
     }
 
     private BodyBuilder headers(BodyBuilder builder) {
+        Set<String> sensitive = this.sensitive;
+        if (sensitive == null) {
+            sensitive = DEFAULT_SENSITIVE;
+        }
         for (String name : headers.keySet()) {
+            if (sensitive.contains(name.toLowerCase())) {
+                continue;
+            }
             builder.header(name, headers.get(name).toArray(new String[0]));
         }
         return builder;
@@ -192,7 +217,4 @@ public class ProxyExchange {
         }
     }
 
-    public void setHeaders(HttpHeaders headers) {
-        this.headers = headers;
-    }
 }

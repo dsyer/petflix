@@ -1,4 +1,4 @@
-package org.spingframework.cloud.function.web;
+package org.springframework.cloud.function.web;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -11,9 +11,6 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.spingframework.cloud.function.web.ProductionConfigurationTests.TestApplication;
-import org.spingframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Bar;
-import org.spingframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Foo;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,11 +18,14 @@ import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.cloud.function.web.ProxyExchange;
+import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication;
+import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Bar;
+import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Foo;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -124,7 +124,6 @@ public class ProductionConfigurationTests {
     }
 
     @SpringBootApplication
-    @Controller
     static class TestApplication {
 
         @RestController

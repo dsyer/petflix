@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 
-package org.spingframework.cloud.function.web;
+package org.springframework.cloud.function.web;
+
+import java.util.Set;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
@@ -33,13 +35,19 @@ public class ProxyExchangeArgumentResolver implements HandlerMethodArgumentResol
     private RestTemplate rest;
 
     private HttpHeaders headers;
-    
+
+    private Set<String> sensitive;
+
     public ProxyExchangeArgumentResolver(RestTemplate builder) {
         this.rest = builder;
     }
 
     public void setHeaders(HttpHeaders headers) {
         this.headers = headers;
+    }
+
+    public void setSensitive(Set<String> sensitive) {
+        this.sensitive = sensitive;
     }
 
     @Override
@@ -51,8 +59,12 @@ public class ProxyExchangeArgumentResolver implements HandlerMethodArgumentResol
     public Object resolveArgument(MethodParameter parameter,
             ModelAndViewContainer mavContainer, NativeWebRequest webRequest,
             WebDataBinderFactory binderFactory) throws Exception {
-        ProxyExchange proxy = new ProxyExchange(rest, webRequest, mavContainer, binderFactory);
-        proxy.setHeaders(headers);
+        ProxyExchange proxy = new ProxyExchange(rest, webRequest, mavContainer,
+                binderFactory);
+        proxy.headers(headers);
+        if (sensitive != null) {
+            proxy.sensitive(sensitive.toArray(new String[0]));
+        }
         return proxy;
     }
 
