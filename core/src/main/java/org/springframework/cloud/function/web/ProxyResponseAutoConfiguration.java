@@ -62,6 +62,7 @@ public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
         });
         ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(template);
         resolver.setHeaders(proxy.convertHeaders());
+        resolver.setSensitive(proxy.getSensitive()); // can be null
         return resolver;
     }
     

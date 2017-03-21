@@ -27,12 +27,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 /**
  * @author Dave Syer
  */
 @RestController
-class VideoController {
+class VideoController extends WebMvcConfigurerAdapter {
 
     @Value("${services.video.uri}")
     private URI videosUrl;
@@ -51,17 +53,10 @@ class VideoController {
                 .postFirst();
     }
 
-    @GetMapping("/owners/videos/templates/**")
-    public ResponseEntity<?> templates(ProxyExchange proxy) throws Exception {
-        return proxy.uri(videosUrl.toString() + "/resources/templates"
-                + proxy.path("/owners/videos/templates")).get();
-    }
-
-    @GetMapping("/owners/videos/js/**")
-    public ResponseEntity<?> scripts(ProxyExchange proxy) throws Exception {
-        return proxy.uri(
-                videosUrl.toString() + "/resources/js" + proxy.path("/owners/videos/js"))
-                .get();
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/owners/videos/**")
+                .addResourceLocations(videosUrl.toString() + "/resources/");
     }
 
 }

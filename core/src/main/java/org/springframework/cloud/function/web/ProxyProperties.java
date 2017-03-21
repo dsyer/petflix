@@ -18,6 +18,7 @@ package org.springframework.cloud.function.web;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpHeaders;
@@ -31,12 +32,22 @@ public class ProxyProperties {
     
     private Map<String, String> headers = new LinkedHashMap<>();
 
+    private Set<String> sensitive = null;
+
     public Map<String, String> getHeaders() {
         return headers;
     }
 
     public void setHeaders(Map<String, String> headers) {
         this.headers = headers;
+    }
+
+    public Set<String> getSensitive() {
+        return sensitive;
+    }
+
+    public void setSensitive(Set<String> sensitive) {
+        this.sensitive = sensitive;
     }
 
     public HttpHeaders convertHeaders() {
