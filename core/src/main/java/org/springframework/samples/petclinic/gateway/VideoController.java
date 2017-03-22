@@ -19,7 +19,9 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.web.ResourceProperties;
 import org.springframework.cloud.function.web.ProxyExchange;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +31,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
+import org.springframework.web.servlet.resource.VersionResourceResolver;
 
 /**
  * @author Dave Syer
@@ -38,6 +41,9 @@ class VideoController extends WebMvcConfigurerAdapter {
 
     @Value("${services.video.uri}")
     private URI videosUrl;
+
+    @Autowired
+    private ResourceProperties resources;
 
     @GetMapping("/owners/videos/{id}")
     public ResponseEntity<?> videos(@PathVariable Integer id, ProxyExchange proxy)
@@ -56,7 +62,9 @@ class VideoController extends WebMvcConfigurerAdapter {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/owners/videos/**")
-                .addResourceLocations(videosUrl.toString() + "/resources/");
+                .addResourceLocations(videosUrl.toString() + "/resources/")
+                .resourceChain(resources.getChain().isCache()).addResolver(
+                        new VersionResourceResolver().addContentVersionStrategy("/**"));
     }
 
 }

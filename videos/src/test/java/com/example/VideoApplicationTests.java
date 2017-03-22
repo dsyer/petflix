@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.get;
+import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.head;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,6 +68,18 @@ public class VideoApplicationTests {
         rest.perform(get("/resources/js/app.js"))
                 .andExpect(content().string(containsString("$http")))
                 .andDo(document("app"));
+    }
+
+    @Test
+    public void homeHead() throws Exception {
+        rest.perform(head("/resources/templates/pet.html"))
+                .andDo(document("petHead"));
+    }
+
+    @Test
+    public void scriptsHead() throws Exception {
+        rest.perform(head("/resources/js/app.js"))
+                .andDo(document("appHead"));
     }
 
     @Test
