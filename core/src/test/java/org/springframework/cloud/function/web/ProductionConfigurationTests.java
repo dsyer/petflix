@@ -75,6 +75,12 @@ public class ProductionConfigurationTests {
     }
 
     @Test
+    public void resourceWithNoType() throws Exception {
+        assertThat(rest.getForObject("/proxy/typeless/test.html", String.class))
+                .contains("<body>Test");
+    }
+
+    @Test
     public void missing() throws Exception {
         assertThat(rest.getForEntity("/proxy/missing/0", Foo.class).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -184,6 +190,17 @@ public class ProductionConfigurationTests {
     }
 
     @Test
+    public void entityWithType() throws Exception {
+        assertThat(rest.exchange(
+                RequestEntity
+                        .post(rest.getRestTemplate().getUriTemplateHandler()
+                                .expand("/proxy/type"))
+                        .body(Collections.singletonMap("name", "foo")),
+                new ParameterizedTypeReference<List<Bar>>() {
+                }).getBody().iterator().next().getName()).isEqualTo("foo");
+    }
+
+    @Test
     public void single() throws Exception {
         assertThat(rest.postForObject("/proxy/single",
                 Collections.singletonMap("name", "foobar"), Bar.class).getName())
@@ -204,38 +221,45 @@ public class ProductionConfigurationTests {
 
             @GetMapping("/proxy/{id}")
             public ResponseEntity<?> proxyFoos(@PathVariable Integer id,
-                    ProxyExchange proxy) throws Exception {
+                    ProxyExchange<?> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/foos/" + id).get();
             }
 
             @GetMapping("/proxy/path/**")
-            public ResponseEntity<?> proxyPath(ProxyExchange proxy,
+            public ResponseEntity<?> proxyPath(ProxyExchange<?> proxy,
                     UriComponentsBuilder uri) throws Exception {
                 String path = proxy.path("/proxy/path/");
                 return proxy.uri(home.toString() + "/foos/" + path).get();
             }
 
             @GetMapping("/proxy/html/**")
-            public ResponseEntity<?> proxyHtml(ProxyExchange proxy,
+            public ResponseEntity<String> proxyHtml(ProxyExchange<String> proxy,
                     UriComponentsBuilder uri) throws Exception {
                 String path = proxy.path("/proxy/html");
                 return proxy.uri(home.toString() + path).get();
             }
 
+            @GetMapping("/proxy/typeless/**")
+            public ResponseEntity<?> proxyTypeless(ProxyExchange<?> proxy,
+                    UriComponentsBuilder uri) throws Exception {
+                String path = proxy.path("/proxy/typeless");
+                return proxy.uri(home.toString() + path).get();
+            }
+
             @GetMapping("/proxy/missing/{id}")
             public ResponseEntity<?> proxyMissing(@PathVariable Integer id,
-                    ProxyExchange proxy) throws Exception {
+                    ProxyExchange<?> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/missing/" + id).get();
             }
 
             @GetMapping("/proxy")
-            public ResponseEntity<?> proxyUri(ProxyExchange proxy) throws Exception {
+            public ResponseEntity<?> proxyUri(ProxyExchange<?> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/foos").get();
             }
 
             @PostMapping("/proxy/{id}")
             public ResponseEntity<?> proxyBars(@PathVariable Integer id,
-                    @RequestBody Map<String, Object> body, ProxyExchange proxy)
+                    @RequestBody Map<String, Object> body, ProxyExchange<?> proxy)
                             throws Exception {
                 body.put("id", id);
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(body))
@@ -243,28 +267,34 @@ public class ProductionConfigurationTests {
             }
 
             @PostMapping("/proxy")
-            public ResponseEntity<?> barsWithNoBody(ProxyExchange proxy)
+            public ResponseEntity<?> barsWithNoBody(ProxyExchange<?> proxy)
                     throws Exception {
                 return proxy.uri(home.toString() + "/bars").post();
             }
 
             @PostMapping("/proxy/entity")
-            // TODO: support for ResponseEntity<List<Bar>>
             public ResponseEntity<?> explicitEntity(@RequestBody Foo foo,
-                    ProxyExchange proxy) throws Exception {
+                    ProxyExchange<?> proxy) throws Exception {
+                return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
+                        .post();
+            }
+
+            @PostMapping("/proxy/type")
+            public ResponseEntity<List<Bar>> explicitEntityWithType(@RequestBody Foo foo,
+                    ProxyExchange<List<Bar>> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
                         .post();
             }
 
             @PostMapping("/proxy/single")
             public ResponseEntity<?> implicitEntity(@RequestBody Foo foo,
-                    ProxyExchange proxy) throws Exception {
+                    ProxyExchange<?> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
                         .postFirst();
             }
 
             @GetMapping("/forward/**")
-            public void forward(ProxyExchange proxy) throws Exception {
+            public void forward(ProxyExchange<?> proxy) throws Exception {
                 String path = proxy.path("/forward");
                 if (path.startsWith("/special")) {
                     proxy.header("X-Custom", "FOO");
@@ -274,7 +304,7 @@ public class ProductionConfigurationTests {
             }
 
             @PostMapping("/forward/**")
-            public void postForward(ProxyExchange proxy) throws Exception {
+            public void postForward(ProxyExchange<?> proxy) throws Exception {
                 String path = proxy.path("/forward");
                 if (path.startsWith("/special")) {
                     proxy.header("X-Custom", "FOO");
@@ -284,13 +314,15 @@ public class ProductionConfigurationTests {
             }
 
             @PostMapping("/forward/body/**")
-            public void postForwardBody(@RequestBody byte[] body, ProxyExchange proxy) throws Exception {
+            public void postForwardBody(@RequestBody byte[] body, ProxyExchange<?> proxy)
+                    throws Exception {
                 String path = proxy.path("/forward/body");
                 proxy.body(body).forward(path);
             }
 
             @PostMapping("/forward/forget/**")
-            public void postForwardForgetBody(@RequestBody byte[] body, ProxyExchange proxy) throws Exception {
+            public void postForwardForgetBody(@RequestBody byte[] body,
+                    ProxyExchange<?> proxy) throws Exception {
                 String path = proxy.path("/forward/forget");
                 proxy.forward(path);
             }

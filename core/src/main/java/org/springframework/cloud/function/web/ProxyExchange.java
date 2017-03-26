@@ -18,6 +18,7 @@ package org.springframework.cloud.function.web;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -52,6 +53,8 @@ import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.client.RequestCallback;
+import org.springframework.web.client.ResponseExtractor;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.context.request.ServletWebRequest;
@@ -59,12 +62,13 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor;
+import org.springframework.web.util.AbstractUriTemplateHandler;
 
 /**
  * @author Dave Syer
  *
  */
-public class ProxyExchange {
+public class ProxyExchange<T> {
 
     public static Set<String> DEFAULT_SENSITIVE = new HashSet<>(
             Arrays.asList("cookie", "authorization"));
@@ -74,7 +78,7 @@ public class ProxyExchange {
 
     private URI uri;
 
-    private RestTemplate rest;
+    private NestedTemplate rest;
 
     private Object body;
 
@@ -90,9 +94,13 @@ public class ProxyExchange {
 
     private HttpHeaders headers = new HttpHeaders();
 
+    private Type type;
+
     public ProxyExchange(RestTemplate rest, NativeWebRequest webRequest,
-            ModelAndViewContainer mavContainer, WebDataBinderFactory binderFactory) {
-        this.rest = rest;
+            ModelAndViewContainer mavContainer, WebDataBinderFactory binderFactory,
+            Type type) {
+        this.type = type;
+        this.rest = createTemplate(rest);
         this.webRequest = webRequest;
         this.mavContainer = mavContainer;
         this.binderFactory = binderFactory;
@@ -100,22 +108,34 @@ public class ProxyExchange {
                 rest.getMessageConverters());
     }
 
-    public ProxyExchange body(Object body) {
+    private NestedTemplate createTemplate(RestTemplate input) {
+        NestedTemplate rest = new NestedTemplate();
+        rest.setMessageConverters(input.getMessageConverters());
+        rest.setErrorHandler(input.getErrorHandler());
+        rest.setDefaultUriVariables(
+                ((AbstractUriTemplateHandler) input.getUriTemplateHandler())
+                        .getDefaultUriVariables());
+        rest.setRequestFactory(input.getRequestFactory());
+        rest.setInterceptors(input.getInterceptors());
+        return rest;
+    }
+
+    public ProxyExchange<T> body(Object body) {
         this.body = body;
         return this;
     }
 
-    public ProxyExchange header(String name, String... value) {
+    public ProxyExchange<T> header(String name, String... value) {
         this.headers.put(name, Arrays.asList(value));
         return this;
     }
 
-    public ProxyExchange headers(HttpHeaders headers) {
+    public ProxyExchange<T> headers(HttpHeaders headers) {
         this.headers.putAll(headers);
         return this;
     }
 
-    public ProxyExchange sensitive(String... names) {
+    public ProxyExchange<T> sensitive(String... names) {
         if (this.sensitive == null) {
             this.sensitive = new HashSet<>();
         }
@@ -135,7 +155,7 @@ public class ProxyExchange {
         return path().substring(prefix.length());
     }
 
-    public ProxyExchange uri(String uri) {
+    public ProxyExchange<T> uri(String uri) {
         try {
             this.uri = new URI(uri);
         }
@@ -143,6 +163,12 @@ public class ProxyExchange {
             throw new IllegalStateException("Cannot create URI", e);
         }
         return this;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <S> ProxyExchange<S> expect(ParameterizedTypeReference<S> type) {
+        this.type = type.getType();
+        return (ProxyExchange<S>) this;
     }
 
     public void forward(String handler) {
@@ -159,37 +185,52 @@ public class ProxyExchange {
         }
     }
 
-    public ResponseEntity<Object> get() {
-        return rest.exchange(headers((BodyBuilder) RequestEntity.get(uri)).build(),
-                Object.class);
+    public ResponseEntity<T> get() {
+        RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.get(uri))
+                .build();
+        Type type = this.type;
+        if (!ClassUtils.isPresent(type.getTypeName(), null)) {
+            type = Object.class;
+        }
+        RequestCallback requestCallback = rest.httpEntityCallback((Object) requestEntity,
+                type);
+        ResponseExtractor<ResponseEntity<T>> responseExtractor = rest
+                .responseEntityExtractor(type);
+        return rest.execute(requestEntity.getUrl(), requestEntity.getMethod(),
+                requestCallback, responseExtractor);
     }
 
-    public ResponseEntity<Object> getFirst() {
+    public ResponseEntity<?> getFirst() {
         ResponseEntity<List<Object>> result = rest.exchange(
                 headers((BodyBuilder) RequestEntity.get(uri)).build(), LIST_TYPE);
         return first(result);
     }
 
-    public ResponseEntity<Object> post() {
-        return rest.exchange(headers(RequestEntity.post(uri)).body(body()), Object.class);
+    public ResponseEntity<T> post() {
+        return rest.exchange(headers(RequestEntity.post(uri)).body(body()),
+                new ParameterizedTypeReference<T>() {
+                });
     }
 
-    public ResponseEntity<Object> postFirst() {
+    public ResponseEntity<?> postFirst() {
         ResponseEntity<List<Object>> result = rest
                 .exchange(headers(RequestEntity.post(uri)).body(body()), LIST_TYPE);
         return first(result);
     }
 
-    public ResponseEntity<Object> delete() {
+    public ResponseEntity<T> delete() {
         return rest.exchange(headers((BodyBuilder) RequestEntity.delete(uri)).build(),
-                Object.class);
+                new ParameterizedTypeReference<T>() {
+                });
     }
 
-    public ResponseEntity<Object> put() {
-        return rest.exchange(headers(RequestEntity.put(uri)).body(body()), Object.class);
+    public ResponseEntity<T> put() {
+        return rest.exchange(headers(RequestEntity.put(uri)).body(body()),
+                new ParameterizedTypeReference<T>() {
+                });
     }
 
-    public ResponseEntity<Object> putFirst() {
+    public ResponseEntity<?> putFirst() {
         ResponseEntity<List<Object>> result = rest
                 .exchange(headers(RequestEntity.put(uri)).body(body()), LIST_TYPE);
         return first(result);
@@ -248,6 +289,20 @@ public class ProxyExchange {
         BindingResult result = (BindingResult) mavContainer.getModel()
                 .get(BindingResult.MODEL_KEY_PREFIX + name);
         return result.getTarget();
+    }
+
+    class NestedTemplate extends RestTemplate {
+        @Override
+        protected <S> RequestCallback httpEntityCallback(Object requestBody,
+                Type responseType) {
+            return super.httpEntityCallback(requestBody, responseType);
+        }
+
+        @Override
+        protected <S> ResponseExtractor<ResponseEntity<S>> responseEntityExtractor(
+                Type responseType) {
+            return super.responseEntityExtractor(responseType);
+        }
     }
 
     class BodyForwardingHttpServletRequest extends HttpServletRequestWrapper {

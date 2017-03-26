@@ -16,6 +16,8 @@
 
 package org.springframework.cloud.function.web;
 
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.Set;
 
 import org.springframework.core.MethodParameter;
@@ -59,13 +61,22 @@ public class ProxyExchangeArgumentResolver implements HandlerMethodArgumentResol
     public Object resolveArgument(MethodParameter parameter,
             ModelAndViewContainer mavContainer, NativeWebRequest webRequest,
             WebDataBinderFactory binderFactory) throws Exception {
-        ProxyExchange proxy = new ProxyExchange(rest, webRequest, mavContainer,
-                binderFactory);
+        ProxyExchange<?> proxy = new ProxyExchange<>(rest, webRequest, mavContainer,
+                binderFactory, type(parameter));
         proxy.headers(headers);
         if (sensitive != null) {
             proxy.sensitive(sensitive.toArray(new String[0]));
         }
         return proxy;
+    }
+
+    private Type type(MethodParameter parameter) {
+        Type type = parameter.getGenericParameterType();
+        if (type instanceof ParameterizedType) {
+            ParameterizedType param = (ParameterizedType) type;
+            type = param.getActualTypeArguments()[0];
+        }
+        return type;
     }
 
 }
