@@ -266,11 +266,11 @@ public class ProductionConfigurationTests {
 
             @PostMapping("/proxy/{id}")
             public ResponseEntity<?> proxyBars(@PathVariable Integer id,
-                    @RequestBody Map<String, Object> body, ProxyExchange<?> proxy)
+                    @RequestBody Map<String, Object> body, ProxyExchange<List<Object>> proxy)
                             throws Exception {
                 body.put("id", id);
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(body))
-                        .postFirst();
+                        .post(this::first);
             }
 
             @PostMapping("/proxy")
@@ -295,18 +295,16 @@ public class ProductionConfigurationTests {
 
             @PostMapping("/proxy/single")
             public ResponseEntity<?> implicitEntity(@RequestBody Foo foo,
-                    ProxyExchange<?> proxy) throws Exception {
+                    ProxyExchange<List<Object>> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
-                        .postFirst();
+                        .post(this::first);
             }
 
             @PostMapping("/proxy/converter")
             public ResponseEntity<Bar> implicitEntityWithConverter(@RequestBody Foo foo,
                     ProxyExchange<List<Bar>> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
-                        .post(response -> ResponseEntity.status(response.getStatusCode())
-                                .headers(response.getHeaders())
-                                .body(response.getBody().iterator().next()));
+                        .post(this::first);
             }
 
             @GetMapping("/forward/**")
@@ -341,6 +339,12 @@ public class ProductionConfigurationTests {
                     ProxyExchange<?> proxy) throws Exception {
                 String path = proxy.path("/forward/forget");
                 proxy.forward(path);
+            }
+
+            private <T> ResponseEntity<T> first(ResponseEntity<List<T>> response) {
+                return ResponseEntity.status(response.getStatusCode())
+                        .headers(response.getHeaders())
+                        .body(response.getBody().iterator().next());
             }
 
         }

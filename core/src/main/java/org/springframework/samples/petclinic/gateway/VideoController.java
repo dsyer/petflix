@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.gateway;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,17 +47,17 @@ class VideoController extends WebMvcConfigurerAdapter {
     private ResourceProperties resources;
 
     @GetMapping("/owners/videos/{id}")
-    public ResponseEntity<?> videos(@PathVariable Integer id, ProxyExchange proxy)
+    public ResponseEntity<?> videos(@PathVariable Integer id, ProxyExchange<?> proxy)
             throws Exception {
         return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
     @PostMapping("/owners/videos/{id}")
     public ResponseEntity<?> rater(@PathVariable Integer id,
-            @RequestBody Map<String, Object> body, ProxyExchange proxy) throws Exception {
+            @RequestBody Map<String, Object> body, ProxyExchange<List<Object>> proxy) throws Exception {
         body.put("id", id);
         return proxy.uri(videosUrl.toString() + "/ratings").body(Arrays.asList(body))
-                .postFirst();
+                .post(this::first);
     }
 
     @Override
@@ -65,6 +66,18 @@ class VideoController extends WebMvcConfigurerAdapter {
                 .addResourceLocations(videosUrl.toString() + "/resources/")
                 .resourceChain(resources.getChain().isCache()).addResolver(
                         new VersionResourceResolver().addContentVersionStrategy("/**"));
+    }
+
+    private ResponseEntity<Object> first(ResponseEntity<List<Object>> result) {
+        Object body;
+        if (result.getBody().isEmpty()) {
+            body = "";
+        }
+        else {
+            body = result.getBody().iterator().next();
+        }
+        return ResponseEntity.status(result.getStatusCode()).headers(result.getHeaders())
+                .body(body);
     }
 
 }

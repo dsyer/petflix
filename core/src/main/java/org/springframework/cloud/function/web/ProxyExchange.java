@@ -44,7 +44,6 @@ import javax.servlet.http.HttpServletResponseWrapper;
 
 import org.springframework.core.Conventions;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.RequestEntity.BodyBuilder;
@@ -76,9 +75,6 @@ public class ProxyExchange<T> {
     public static Set<String> DEFAULT_SENSITIVE = new HashSet<>(
             Arrays.asList("cookie", "authorization"));
 
-    private static final ParameterizedTypeReference<List<Object>> LIST_TYPE = new ParameterizedTypeReference<List<Object>>() {
-    };
-
     private URI uri;
 
     private NestedTemplate rest;
@@ -97,12 +93,12 @@ public class ProxyExchange<T> {
 
     private HttpHeaders headers = new HttpHeaders();
 
-    private Type type;
+    private Type responseType;
 
     public ProxyExchange(RestTemplate rest, NativeWebRequest webRequest,
             ModelAndViewContainer mavContainer, WebDataBinderFactory binderFactory,
             Type type) {
-        this.type = type;
+        this.responseType = type;
         this.rest = createTemplate(rest);
         this.webRequest = webRequest;
         this.mavContainer = mavContainer;
@@ -168,12 +164,6 @@ public class ProxyExchange<T> {
         return this;
     }
 
-    @SuppressWarnings("unchecked")
-    public <S> ProxyExchange<S> expect(ParameterizedTypeReference<S> type) {
-        this.type = type.getType();
-        return (ProxyExchange<S>) this;
-    }
-
     public void forward(String handler) {
         HttpServletRequest request = this.webRequest
                 .getNativeRequest(HttpServletRequest.class);
@@ -195,7 +185,7 @@ public class ProxyExchange<T> {
     }
 
     private ResponseEntity<T> exchange(RequestEntity<?> requestEntity) {
-        Type type = this.type;
+        Type type = this.responseType;
         if (type instanceof TypeVariable || type instanceof WildcardType) {
             type = Object.class;
         }
@@ -205,12 +195,6 @@ public class ProxyExchange<T> {
                 .responseEntityExtractor(type);
         return rest.execute(requestEntity.getUrl(), requestEntity.getMethod(),
                 requestCallback, responseExtractor);
-    }
-
-    public ResponseEntity<?> getFirst() {
-        ResponseEntity<List<Object>> result = rest.exchange(
-                headers((BodyBuilder) RequestEntity.get(uri)).build(), LIST_TYPE);
-        return first(result);
     }
 
     public ResponseEntity<T> post() {
@@ -226,12 +210,6 @@ public class ProxyExchange<T> {
         return converter.apply(exchange(requestEntity));
     }
 
-    public ResponseEntity<?> postFirst() {
-        ResponseEntity<List<Object>> result = rest
-                .exchange(headers(RequestEntity.post(uri)).body(body()), LIST_TYPE);
-        return first(result);
-    }
-
     public ResponseEntity<T> delete() {
         RequestEntity<Void> requestEntity = headers((BodyBuilder) RequestEntity.delete(uri)).build();
         return exchange(requestEntity);
@@ -240,12 +218,6 @@ public class ProxyExchange<T> {
     public ResponseEntity<T> put() {
         RequestEntity<Object> requestEntity = headers(RequestEntity.put(uri)).body(body());
         return exchange(requestEntity);
-    }
-
-    public ResponseEntity<?> putFirst() {
-        ResponseEntity<List<Object>> result = rest
-                .exchange(headers(RequestEntity.put(uri)).body(body()), LIST_TYPE);
-        return first(result);
     }
 
     private BodyBuilder headers(BodyBuilder builder) {
@@ -268,18 +240,6 @@ public class ProxyExchange<T> {
         }
         body = getRequestBody();
         return body;
-    }
-
-    private ResponseEntity<Object> first(ResponseEntity<List<Object>> result) {
-        Object body;
-        if (result.getBody().isEmpty()) {
-            body = "";
-        }
-        else {
-            body = result.getBody().iterator().next();
-        }
-        return ResponseEntity.status(result.getStatusCode()).headers(result.getHeaders())
-                .body(body);
     }
 
     private Object getRequestBody() {
