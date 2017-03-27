@@ -19,6 +19,8 @@ package org.springframework.cloud.function.web;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.lang.reflect.TypeVariable;
+import java.lang.reflect.WildcardType;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -29,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.Vector;
+import java.util.function.Function;
 
 import javax.servlet.ReadListener;
 import javax.servlet.ServletInputStream;
@@ -188,8 +191,12 @@ public class ProxyExchange<T> {
     public ResponseEntity<T> get() {
         RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.get(uri))
                 .build();
+        return exchange(requestEntity);
+    }
+
+    private ResponseEntity<T> exchange(RequestEntity<?> requestEntity) {
         Type type = this.type;
-        if (!ClassUtils.isPresent(type.getTypeName(), null)) {
+        if (type instanceof TypeVariable || type instanceof WildcardType) {
             type = Object.class;
         }
         RequestCallback requestCallback = rest.httpEntityCallback((Object) requestEntity,
@@ -207,9 +214,16 @@ public class ProxyExchange<T> {
     }
 
     public ResponseEntity<T> post() {
-        return rest.exchange(headers(RequestEntity.post(uri)).body(body()),
-                new ParameterizedTypeReference<T>() {
-                });
+        RequestEntity<Object> requestEntity = headers(RequestEntity.post(uri))
+                .body(body());
+        return exchange(requestEntity);
+    }
+
+    public <S> ResponseEntity<S> post(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<Object> requestEntity = headers(RequestEntity.post(uri))
+                .body(body());
+        return converter.apply(exchange(requestEntity));
     }
 
     public ResponseEntity<?> postFirst() {
@@ -219,15 +233,13 @@ public class ProxyExchange<T> {
     }
 
     public ResponseEntity<T> delete() {
-        return rest.exchange(headers((BodyBuilder) RequestEntity.delete(uri)).build(),
-                new ParameterizedTypeReference<T>() {
-                });
+        RequestEntity<Void> requestEntity = headers((BodyBuilder) RequestEntity.delete(uri)).build();
+        return exchange(requestEntity);
     }
 
     public ResponseEntity<T> put() {
-        return rest.exchange(headers(RequestEntity.put(uri)).body(body()),
-                new ParameterizedTypeReference<T>() {
-                });
+        RequestEntity<Object> requestEntity = headers(RequestEntity.put(uri)).body(body());
+        return exchange(requestEntity);
     }
 
     public ResponseEntity<?> putFirst() {

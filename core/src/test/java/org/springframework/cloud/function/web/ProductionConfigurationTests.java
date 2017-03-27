@@ -207,6 +207,13 @@ public class ProductionConfigurationTests {
                         .isEqualTo("foobar");
     }
 
+    @Test
+    public void converter() throws Exception {
+        assertThat(rest.postForObject("/proxy/converter",
+                Collections.singletonMap("name", "foobar"), Bar.class).getName())
+                        .isEqualTo("foobar");
+    }
+
     @SpringBootApplication
     static class TestApplication {
 
@@ -291,6 +298,15 @@ public class ProductionConfigurationTests {
                     ProxyExchange<?> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
                         .postFirst();
+            }
+
+            @PostMapping("/proxy/converter")
+            public ResponseEntity<Bar> implicitEntityWithConverter(@RequestBody Foo foo,
+                    ProxyExchange<List<Bar>> proxy) throws Exception {
+                return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
+                        .post(response -> ResponseEntity.status(response.getStatusCode())
+                                .headers(response.getHeaders())
+                                .body(response.getBody().iterator().next()));
             }
 
             @GetMapping("/forward/**")
