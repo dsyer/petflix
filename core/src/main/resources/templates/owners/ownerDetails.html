@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 
 <html xmlns:th="http://www.thymeleaf.org"
-  th:replace="~{fragments/layout :: layout (template=~{::body},menu='owners',script='videos/js/app.js')}">
+  th:replace="~{fragments/layout :: layout (template=~{::body},menu='owners',script=@{/videos/js/app.js})}">
 
 <body>
 
@@ -53,7 +53,7 @@
           <dd>{{pet.type.name}}</dd>
         </dl>
       </td>
-      <td><ng-include src="'videos/templates/pet.html'"></ng-include></td>
+      <td><ng-include th:src="|'@{/videos/templates/pet.html}'|"></ng-include></td>
       <td valign="top">
         <table class="table-condensed">
           <thead>

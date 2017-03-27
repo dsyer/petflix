@@ -38,7 +38,7 @@ import org.springframework.web.servlet.resource.VersionResourceResolver;
  * @author Dave Syer
  */
 @RestController
-class VideoController extends WebMvcConfigurerAdapter {
+class GatewayController extends WebMvcConfigurerAdapter {
 
     @Value("${services.video.uri}")
     private URI videosUrl;
@@ -46,13 +46,13 @@ class VideoController extends WebMvcConfigurerAdapter {
     @Autowired
     private ResourceProperties resources;
 
-    @GetMapping("/owners/videos/{id}")
+    @GetMapping("/videos/{id}")
     public ResponseEntity<?> videos(@PathVariable Integer id, ProxyExchange<?> proxy)
             throws Exception {
         return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
-    @PostMapping("/owners/videos/{id}")
+    @PostMapping("/videos/{id}")
     public ResponseEntity<?> rater(@PathVariable Integer id,
             @RequestBody Map<String, Object> body, ProxyExchange<List<Object>> proxy) throws Exception {
         body.put("id", id);
@@ -62,7 +62,7 @@ class VideoController extends WebMvcConfigurerAdapter {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/owners/videos/**")
+        registry.addResourceHandler("/videos/**")
                 .addResourceLocations(videosUrl.toString() + "/resources/")
                 .resourceChain(resources.getChain().isCache()).addResolver(
                         new VersionResourceResolver().addContentVersionStrategy("/**"));

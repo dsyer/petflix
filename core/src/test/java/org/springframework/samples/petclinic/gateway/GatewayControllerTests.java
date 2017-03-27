@@ -24,11 +24,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @author Colin But
  */
 @RunWith(SpringRunner.class)
-@WebMvcTest(VideoController.class)
+@WebMvcTest(GatewayController.class)
 @AutoConfigureWebClient
 @AutoConfigureWireMock(stubs = "classpath:META-INF/com.example/petflix-videos/0.0.1-SNAPSHOT/", port = 0)
 @TestPropertySource(properties = "services.video.uri=http://localhost:${wiremock.server.port}")
-public class VideoControllerTests {
+public class GatewayControllerTests {
 
     private static final int TEST_PET_ID = 0;
 
@@ -37,26 +37,26 @@ public class VideoControllerTests {
 
     @Test
     public void testGetVideo() throws Exception {
-        mockMvc.perform(get("/owners/videos/{id}", TEST_PET_ID))
+        mockMvc.perform(get("/videos/{id}", TEST_PET_ID))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void testPostRating() throws Exception {
-        mockMvc.perform(post("/owners/videos/{id}", TEST_PET_ID).content("{\"stars\":0}")
+        mockMvc.perform(post("/videos/{id}", TEST_PET_ID).content("{\"stars\":0}")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     @Test
     public void testGetTemplate() throws Exception {
-        mockMvc.perform(get("/owners/videos/templates/pet.html"))
+        mockMvc.perform(get("/videos/templates/pet.html"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Video of {{pet.name}}")));
     }
 
     @Test
     public void testGetScript() throws Exception {
-        mockMvc.perform(get("/owners/videos/js/app.js"))
+        mockMvc.perform(get("/videos/js/app.js"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString(".module(\"")));
     }

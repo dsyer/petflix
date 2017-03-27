@@ -7,7 +7,7 @@ angular
                     self.pets = [];
                     fetch = function(pet) {
                         $http
-                                .get("videos/" + pet.id)
+                                .get("/videos/" + pet.id)
                                 .then(
                                         function(response) {
                                             var stars = response.data.stars;
@@ -26,7 +26,7 @@ angular
                     };
                     self.rate = function(pet, stars) {
                         $http
-                                .post("videos/" + pet.id, {
+                                .post("/videos/" + pet.id, {
                                     stars : stars
                                 })
                                 .then(
