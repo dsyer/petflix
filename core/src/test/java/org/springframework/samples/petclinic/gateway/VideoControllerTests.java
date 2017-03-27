@@ -4,11 +4,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.web.WebClientAutoConfiguration;
+import org.springframework.boot.test.autoconfigure.web.client.AutoConfigureWebClient;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
-import org.springframework.cloud.function.web.gateway.ProxyResponseAutoConfiguration;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -27,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @RunWith(SpringRunner.class)
 @WebMvcTest(VideoController.class)
-@Import({ ProxyResponseAutoConfiguration.class, WebClientAutoConfiguration.class })
+@AutoConfigureWebClient
 @AutoConfigureWireMock(stubs = "classpath:META-INF/com.example/petflix-videos/0.0.1-SNAPSHOT/", port = 0)
 @TestPropertySource(properties = "services.video.uri=http://localhost:${wiremock.server.port}")
 public class VideoControllerTests {
