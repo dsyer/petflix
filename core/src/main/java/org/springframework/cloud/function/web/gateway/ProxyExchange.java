@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.function.web;
+package org.springframework.cloud.function.web.gateway;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -44,10 +44,12 @@ import javax.servlet.http.HttpServletResponseWrapper;
 
 import org.springframework.core.Conventions;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.RequestEntity.BodyBuilder;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.util.ClassUtils;
 import org.springframework.validation.BindingResult;
@@ -67,6 +69,68 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestResponseBody
 import org.springframework.web.util.AbstractUriTemplateHandler;
 
 /**
+ * A <code>@RequestMapping</code> argument type that can proxy the request to a backend.
+ * Spring will inject one of these into your MVC handler method, and you get return a
+ * <code>ResponseEntity</code> that you get from one of the HTTP methods {@link #get()},
+ * {@link #post()}, {@link #put()}, {@link #patch()}, {@link #delete()} etc. Example:
+ * 
+ * <pre>
+ * &#64;GetMapping("/proxy/{id}")
+ * public ResponseEntity&lt;?&gt; proxy(@PathVariable Integer id, ProxyExchange&lt;?&gt; proxy)
+ *         throws Exception {
+ *     return proxy.uri("http://localhost:9000/foos/" + id).get();
+ * }
+ * </pre>
+ * 
+ * <p>
+ * By default the incoming request body and headers are sent intact to the downstream
+ * service (with the exception of "sensitive" headers). To manipulate the downstream
+ * request there are "builder" style methods in {@link ProxyExchange}, but only the
+ * {@link #uri(String)} is mandatory. You can change the sensitive headers by calling the
+ * {@link #sensitive(String...)} method (Authorization and Cookie are sensitive by
+ * default).
+ * </p>
+ * <p>
+ * The type parameter <code>T</code> in <code>ProxyExchange&lt;T&gt;</code> is the type of
+ * the response body, so it comes out in the {@link ResponseEntity} that you return from
+ * your <code>@RequestMapping</code>. If you don't care about the type of the request and
+ * response body (e.g. if it's just a passthru) then use a wildcard, or
+ * <code>byte[]</code> or <code>Object</code>. Use a concrete type if you want to
+ * transform or manipulate the response, or if you want to assert that it is convertible
+ * to the type you declare.
+ * </p>
+ * <p>
+ * To manipulate the response use the overloaded HTTP methods
+ * with a <code>Function</code> argument and pass in code to transform the response. E.g.
+ * 
+  * <pre>
+ * &#64;PostMapping("/proxy")
+ * public ResponseEntity&lt;Foo&gt; proxy(ProxyExchange&lt;Foo&gt; proxy)
+ *         throws Exception {
+ *     return proxy.uri("http://localhost:9000/foos/").post(response ->
+ *         ResponseEntity.status(response.getStatusCode())
+ *           .headers(response.getHeaders())
+ *           .header("X-Custom", "MyCustomHeader")
+ *           .body(response.getBody())
+ *       );
+ * }
+ * 
+ * </pre>
+ * 
+ * </p>
+ * <p>
+ * The full machinery of Spring {@link HttpMessageConverter message converters} is applied
+ * to the incoming request and response and also to the backend request. If you need
+ * additional converters then they need to be added upstream in the MVC configuration and
+ * also to the {@link RestTemplate} that is used in the backend calls (see the
+ * {@link ProxyExchange#ProxyExchange(RestTemplate, NativeWebRequest, ModelAndViewContainer, WebDataBinderFactory, Type)
+ * constructor} for details).
+ * </p>
+ * <p>
+ * As well as the HTTP methods for a backend call you can also use
+ * {@link #forward(String)} for a local in-container dispatch.
+ * </p>
+ * 
  * @author Dave Syer
  *
  */
@@ -107,39 +171,74 @@ public class ProxyExchange<T> {
                 rest.getMessageConverters());
     }
 
-    private NestedTemplate createTemplate(RestTemplate input) {
-        NestedTemplate rest = new NestedTemplate();
-        rest.setMessageConverters(input.getMessageConverters());
-        rest.setErrorHandler(input.getErrorHandler());
-        rest.setDefaultUriVariables(
-                ((AbstractUriTemplateHandler) input.getUriTemplateHandler())
-                        .getDefaultUriVariables());
-        rest.setRequestFactory(input.getRequestFactory());
-        rest.setInterceptors(input.getInterceptors());
-        return rest;
-    }
-
+    /**
+     * Sets the body for the downstream request (if using {@link #post()}, {@link #put()}
+     * or {@link #patch()}). The body can be omitted if you just want to pass the incoming
+     * request downstream without changing it. If you want to transform the incoming
+     * request you can declare it as a <code>@RequestBody</code> in your
+     * <code>@RequestMapping</code> in the usual Spring MVC way.
+     * 
+     * @param body the request body to send downstream
+     * @return this for convenience
+     */
     public ProxyExchange<T> body(Object body) {
         this.body = body;
         return this;
     }
 
+    /**
+     * Sets a header for the downstream call.
+     * 
+     * @param name
+     * @param value
+     * @return this for convenience
+     */
     public ProxyExchange<T> header(String name, String... value) {
         this.headers.put(name, Arrays.asList(value));
         return this;
     }
 
+    /**
+     * Additional headers, or overrides of the incoming ones, to be used in the downstream
+     * call.
+     * 
+     * @param headers the http headers to use in the downstream call
+     * @return this for convenience
+     */
     public ProxyExchange<T> headers(HttpHeaders headers) {
         this.headers.putAll(headers);
         return this;
     }
 
+    /**
+     * Sets the names of sensitive headers that are not passed downstream to the backend
+     * service.
+     * 
+     * @param names the names of sensitive headers
+     * @return this for convenience
+     */
     public ProxyExchange<T> sensitive(String... names) {
         if (this.sensitive == null) {
             this.sensitive = new HashSet<>();
         }
         for (String name : names) {
             this.sensitive.add(name.toLowerCase());
+        }
+        return this;
+    }
+
+    /**
+     * Sets the uri for the backend call when triggered by the HTTP methods.
+     * 
+     * @param uri the backend uri to send the request to
+     * @return this for convenience
+     */
+    public ProxyExchange<T> uri(String uri) {
+        try {
+            this.uri = new URI(uri);
+        }
+        catch (URISyntaxException e) {
+            throw new IllegalStateException("Cannot create URI", e);
         }
         return this;
     }
@@ -151,26 +250,21 @@ public class ProxyExchange<T> {
     }
 
     public String path(String prefix) {
-        return path().substring(prefix.length());
+        String path = path();
+        if (!path.startsWith(prefix)) {
+            throw new IllegalArgumentException(
+                    "Path does not start with prefix (" + prefix + "): " + path);
+        }
+        return path.substring(prefix.length());
     }
 
-    public ProxyExchange<T> uri(String uri) {
-        try {
-            this.uri = new URI(uri);
-        }
-        catch (URISyntaxException e) {
-            throw new IllegalStateException("Cannot create URI", e);
-        }
-        return this;
-    }
-
-    public void forward(String handler) {
+    public void forward(String path) {
         HttpServletRequest request = this.webRequest
                 .getNativeRequest(HttpServletRequest.class);
         HttpServletResponse response = this.webRequest
                 .getNativeResponse(HttpServletResponse.class);
         try {
-            request.getRequestDispatcher(handler).forward(
+            request.getRequestDispatcher(path).forward(
                     new BodyForwardingHttpServletRequest(request, response), response);
         }
         catch (Exception e) {
@@ -184,17 +278,37 @@ public class ProxyExchange<T> {
         return exchange(requestEntity);
     }
 
-    private ResponseEntity<T> exchange(RequestEntity<?> requestEntity) {
-        Type type = this.responseType;
-        if (type instanceof TypeVariable || type instanceof WildcardType) {
-            type = Object.class;
-        }
-        RequestCallback requestCallback = rest.httpEntityCallback((Object) requestEntity,
-                type);
-        ResponseExtractor<ResponseEntity<T>> responseExtractor = rest
-                .responseEntityExtractor(type);
-        return rest.execute(requestEntity.getUrl(), requestEntity.getMethod(),
-                requestCallback, responseExtractor);
+    public <S> ResponseEntity<S> get(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.get(uri))
+                .build();
+        return converter.apply(exchange(requestEntity));
+    }
+
+    public ResponseEntity<T> head() {
+        RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.head(uri))
+                .build();
+        return exchange(requestEntity);
+    }
+
+    public <S> ResponseEntity<S> head(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.head(uri))
+                .build();
+        return converter.apply(exchange(requestEntity));
+    }
+
+    public ResponseEntity<T> options() {
+        RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.options(uri))
+                .build();
+        return exchange(requestEntity);
+    }
+
+    public <S> ResponseEntity<S> options(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<?> requestEntity = headers((BodyBuilder) RequestEntity.options(uri))
+                .build();
+        return converter.apply(exchange(requestEntity));
     }
 
     public ResponseEntity<T> post() {
@@ -211,13 +325,55 @@ public class ProxyExchange<T> {
     }
 
     public ResponseEntity<T> delete() {
-        RequestEntity<Void> requestEntity = headers((BodyBuilder) RequestEntity.delete(uri)).build();
+        RequestEntity<Void> requestEntity = headers(
+                (BodyBuilder) RequestEntity.delete(uri)).build();
         return exchange(requestEntity);
     }
 
+    public <S> ResponseEntity<S> delete(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<Void> requestEntity = headers(
+                (BodyBuilder) RequestEntity.delete(uri)).build();
+        return converter.apply(exchange(requestEntity));
+    }
+
     public ResponseEntity<T> put() {
-        RequestEntity<Object> requestEntity = headers(RequestEntity.put(uri)).body(body());
+        RequestEntity<Object> requestEntity = headers(RequestEntity.put(uri))
+                .body(body());
         return exchange(requestEntity);
+    }
+
+    public <S> ResponseEntity<S> put(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<Object> requestEntity = headers(RequestEntity.put(uri))
+                .body(body());
+        return converter.apply(exchange(requestEntity));
+    }
+
+    public ResponseEntity<T> patch() {
+        RequestEntity<Object> requestEntity = headers(RequestEntity.patch(uri))
+                .body(body());
+        return exchange(requestEntity);
+    }
+
+    public <S> ResponseEntity<S> patch(
+            Function<ResponseEntity<T>, ResponseEntity<S>> converter) {
+        RequestEntity<Object> requestEntity = headers(RequestEntity.patch(uri))
+                .body(body());
+        return converter.apply(exchange(requestEntity));
+    }
+
+    private ResponseEntity<T> exchange(RequestEntity<?> requestEntity) {
+        Type type = this.responseType;
+        if (type instanceof TypeVariable || type instanceof WildcardType) {
+            type = Object.class;
+        }
+        RequestCallback requestCallback = rest.httpEntityCallback((Object) requestEntity,
+                type);
+        ResponseExtractor<ResponseEntity<T>> responseExtractor = rest
+                .responseEntityExtractor(type);
+        return rest.execute(requestEntity.getUrl(), requestEntity.getMethod(),
+                requestCallback, responseExtractor);
     }
 
     private BodyBuilder headers(BodyBuilder builder) {
@@ -242,6 +398,13 @@ public class ProxyExchange<T> {
         return body;
     }
 
+    /**
+     * Search for the request body if it was already deserialized using
+     * <code>@RequestBody</code>. If it is not found then deserialize it in the same way
+     * that it would have been for a <code>@RequestBody</code>.
+     * 
+     * @return the request body
+     */
     private Object getRequestBody() {
         for (String key : mavContainer.getModel().keySet()) {
             if (key.startsWith(BindingResult.MODEL_KEY_PREFIX)) {
@@ -263,6 +426,24 @@ public class ProxyExchange<T> {
         return result.getTarget();
     }
 
+    private NestedTemplate createTemplate(RestTemplate input) {
+        NestedTemplate rest = new NestedTemplate();
+        rest.setMessageConverters(input.getMessageConverters());
+        rest.setErrorHandler(input.getErrorHandler());
+        rest.setDefaultUriVariables(
+                ((AbstractUriTemplateHandler) input.getUriTemplateHandler())
+                        .getDefaultUriVariables());
+        rest.setRequestFactory(input.getRequestFactory());
+        rest.setInterceptors(input.getInterceptors());
+        return rest;
+    }
+
+    /**
+     * A special {@link RestTemplate} that knows about the {@link Type} of its response
+     * body explicitly (rather than through a {@link ParameterizedTypeReference}, which is
+     * the only way to access this feature in a regular template).
+     *
+     */
     class NestedTemplate extends RestTemplate {
         @Override
         protected <S> RequestCallback httpEntityCallback(Object requestBody,
@@ -277,6 +458,12 @@ public class ProxyExchange<T> {
         }
     }
 
+    /**
+     * A servlet request wrapper that can be safely passed downstream to an internal
+     * forward dispatch, caching its body, and making it available in converted form using
+     * Spring message converters.
+     *
+     */
     class BodyForwardingHttpServletRequest extends HttpServletRequestWrapper {
         private HttpServletRequest request;
         private HttpServletResponse response;
@@ -356,6 +543,17 @@ public class ProxyExchange<T> {
 
 }
 
+/**
+ * Convenience class that converts an incoming request input stream into a form that can
+ * be easily deserialized to a Java object using Spring message converters. It is only
+ * used in a local forward dispatch, in which case there is a danger that the request body
+ * will need to be read and analysed more than once. Apart from using the message
+ * converters the other main feature of this class is that the request body is cached and
+ * can be read repeatedly as necessary.
+ * 
+ * @author Dave Syer
+ *
+ */
 class ServletOutputToInputConverter extends HttpServletResponseWrapper {
 
     private StringBuilder builder = new StringBuilder();

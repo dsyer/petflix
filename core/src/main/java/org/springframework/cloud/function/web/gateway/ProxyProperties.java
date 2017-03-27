@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.function.web;
+package org.springframework.cloud.function.web.gateway;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -24,14 +24,22 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpHeaders;
 
 /**
+ * Configuration properties for the {@link ProxyExchange} argument handler in
+ * <code>@RequestMapping</code> methods.
  * @author Dave Syer
  *
  */
 @ConfigurationProperties("spring.cloud.gateway.proxy")
 public class ProxyProperties {
-    
+
+    /**
+     * Fixed header values that will be added to all downstream requests.
+     */
     private Map<String, String> headers = new LinkedHashMap<>();
 
+    /**
+     * A set of sensitive header names that will not be sent downstream by default.
+     */
     private Set<String> sensitive = null;
 
     public Map<String, String> getHeaders() {
@@ -52,7 +60,7 @@ public class ProxyProperties {
 
     public HttpHeaders convertHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        for (String key: this.headers.keySet()) {
+        for (String key : this.headers.keySet()) {
             headers.set(key, this.headers.get(key));
         }
         return headers;

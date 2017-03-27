@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.function.web;
+package org.springframework.cloud.function.web.gateway;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +37,8 @@ import org.springframework.web.method.support.HandlerMethodReturnValueHandler;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 
 /**
+ * Autoconfiguration for the {@link ProxyExchange} argument handler in Spring MVC
+ * <code>@RequestMapping</code> methods.
  * @author Dave Syer
  *
  */
@@ -51,7 +53,8 @@ public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
 
     @Bean
     @ConditionalOnMissingBean
-    public ProxyExchangeArgumentResolver proxyExchangeBuilderArgumentResolver(RestTemplateBuilder builder, ProxyProperties proxy) {
+    public ProxyExchangeArgumentResolver proxyExchangeBuilderArgumentResolver(
+            RestTemplateBuilder builder, ProxyProperties proxy) {
         RestTemplate template = builder.build();
         template.setErrorHandler(new NoOpResponseErrorHandler());
         template.getMessageConverters().add(new ByteArrayHttpMessageConverter() {
@@ -60,12 +63,13 @@ public class ProxyResponseAutoConfiguration extends WebMvcConfigurerAdapter {
                 return true;
             }
         });
-        ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(template);
+        ProxyExchangeArgumentResolver resolver = new ProxyExchangeArgumentResolver(
+                template);
         resolver.setHeaders(proxy.convertHeaders());
         resolver.setSensitive(proxy.getSensitive()); // can be null
         return resolver;
     }
-    
+
     @Override
     public void addArgumentResolvers(
             List<HandlerMethodArgumentResolver> argumentResolvers) {

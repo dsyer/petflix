@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.function.web;
+package org.springframework.cloud.function.web.gateway;
 
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;

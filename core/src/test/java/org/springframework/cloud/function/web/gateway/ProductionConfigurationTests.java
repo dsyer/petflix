@@ -1,4 +1,4 @@
-package org.springframework.cloud.function.web;
+package org.springframework.cloud.function.web.gateway;
 
 import java.net.URI;
 import java.util.Arrays;
@@ -18,9 +18,10 @@ import org.springframework.boot.context.embedded.LocalServerPort;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication;
-import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Bar;
-import org.springframework.cloud.function.web.ProductionConfigurationTests.TestApplication.Foo;
+import org.springframework.cloud.function.web.gateway.ProxyExchange;
+import org.springframework.cloud.function.web.gateway.ProductionConfigurationTests.TestApplication;
+import org.springframework.cloud.function.web.gateway.ProductionConfigurationTests.TestApplication.Bar;
+import org.springframework.cloud.function.web.gateway.ProductionConfigurationTests.TestApplication.Foo;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -266,8 +267,8 @@ public class ProductionConfigurationTests {
 
             @PostMapping("/proxy/{id}")
             public ResponseEntity<?> proxyBars(@PathVariable Integer id,
-                    @RequestBody Map<String, Object> body, ProxyExchange<List<Object>> proxy)
-                            throws Exception {
+                    @RequestBody Map<String, Object> body,
+                    ProxyExchange<List<Object>> proxy) throws Exception {
                 body.put("id", id);
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(body))
                         .post(this::first);
@@ -304,7 +305,9 @@ public class ProductionConfigurationTests {
             public ResponseEntity<Bar> implicitEntityWithConverter(@RequestBody Foo foo,
                     ProxyExchange<List<Bar>> proxy) throws Exception {
                 return proxy.uri(home.toString() + "/bars").body(Arrays.asList(foo))
-                        .post(this::first);
+                        .post(response -> ResponseEntity.status(response.getStatusCode())
+                                .headers(response.getHeaders())
+                                .body(response.getBody().iterator().next()));
             }
 
             @GetMapping("/forward/**")
