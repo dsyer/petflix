@@ -36,16 +36,16 @@ public class CommanderApplication {
                 this.commands.add(command);
             }
             return command;
-        }).log();
+        });
     }
 
     @Bean
-    public Function<Flux<String>, Flux<Command>> commandsById() {
+    public Function<Flux<String>, Flux<Command>> store() {
         return ids -> ids.map(id -> commandsById.get(id)).log();
     }
 
     @Bean
-    public Supplier<Flux<Command>> commandSupplier() {
+    public Supplier<Flux<Command>> replay() {
         return () -> Flux.fromIterable(commands);
     }
 
