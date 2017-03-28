@@ -26,8 +26,7 @@ angular
                     };
                     self.rate = function(pet, stars) {
                         $http
-                                .post("/commands/rate-video", {
-                                    pet: pet.id,
+                                .post("/videos/" + pet.id, {
                                     stars : stars
                                 })
                                 .then(
@@ -40,7 +39,11 @@ angular
                                             for (var i = stars; i < 5; i++) {
                                                 pet.stars[i] = "star-empty";
                                             }
-                                          });
+                                            pet.video = $sce
+                                                    .trustAsHtml('<iframe width="500" height="300" src="'
+                                                            + response.data.url
+                                                            + '" frameborder="0" allowfullscreen></iframe>');
+                                        });
                     };
                     $http.get("#").then(function(response) {
                         self.pets = response.data.pets;

@@ -17,8 +17,12 @@ package org.springframework.samples.petclinic.gateway;
 
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +47,9 @@ class GatewayController extends WebMvcConfigurerAdapter {
     @Value("${services.video.uri}")
     private URI videosUrl;
 
+    @Value("${services.commander.uri}")
+    private URI commanderUrl;
+
     @Autowired
     private ResourceProperties resources;
 
@@ -52,12 +59,17 @@ class GatewayController extends WebMvcConfigurerAdapter {
         return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
-    @PostMapping("/videos/{id}")
-    public ResponseEntity<?> rater(@PathVariable Integer id,
-            @RequestBody Map<String, Object> body, ProxyExchange<List<Object>> proxy) throws Exception {
-        body.put("id", id);
-        return proxy.uri(videosUrl.toString() + "/ratings").body(Arrays.asList(body))
-                .post(this::first);
+    @PostMapping("/commands/{action}")
+    public ResponseEntity<?> rater(@PathVariable String action,
+            @RequestBody Map<String, Object> request,
+            ProxyExchange<List<Map<String, Object>>> proxy) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("id", UUID.randomUUID().toString());
+        body.put("action", action);
+        body.put("timestamp", new Date());
+        body.put("data", request);
+        return proxy.uri(commanderUrl.toString() + "/commands").body(Arrays.asList(body))
+                .post(this::event);
     }
 
     @Override
@@ -68,13 +80,15 @@ class GatewayController extends WebMvcConfigurerAdapter {
                         new VersionResourceResolver().addContentVersionStrategy("/**"));
     }
 
-    private ResponseEntity<Object> first(ResponseEntity<List<Object>> result) {
-        Object body;
-        if (result.getBody().isEmpty()) {
-            body = "";
-        }
-        else {
-            body = result.getBody().iterator().next();
+    private ResponseEntity<Map<String, Object>> event(
+            ResponseEntity<List<Map<String, Object>>> result) {
+        Map<String, Object> body;
+        body = new HashMap<>();
+        if (!result.getBody().isEmpty()) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = (Map<String, Object>) result.getBody().iterator()
+                    .next().get("data");
+            body.putAll(data);
         }
         return ResponseEntity.status(result.getStatusCode()).headers(result.getHeaders())
                 .body(body);

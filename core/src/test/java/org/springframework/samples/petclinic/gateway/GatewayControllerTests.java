@@ -26,8 +26,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @RunWith(SpringRunner.class)
 @WebMvcTest(GatewayController.class)
 @AutoConfigureWebClient
-@AutoConfigureWireMock(stubs = "classpath:META-INF/com.example/petflix-videos/0.0.1-SNAPSHOT/", port = 0)
-@TestPropertySource(properties = "services.video.uri=http://localhost:${wiremock.server.port}")
+@AutoConfigureWireMock(stubs = {
+        "classpath:META-INF/com.example/petflix-videos/0.0.1-SNAPSHOT/",
+        "classpath:META-INF/com.example/petflix-commander/0.0.1-SNAPSHOT/" }, port = 0)
+@TestPropertySource(properties = {
+        "services.video.uri=http://localhost:${wiremock.server.port}",
+        "services.commander.uri=http://localhost:${wiremock.server.port}" })
 public class GatewayControllerTests {
 
     private static final int TEST_PET_ID = 0;
@@ -37,27 +41,25 @@ public class GatewayControllerTests {
 
     @Test
     public void testGetVideo() throws Exception {
-        mockMvc.perform(get("/videos/{id}", TEST_PET_ID))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/videos/{id}", TEST_PET_ID)).andExpect(status().isOk());
     }
 
     @Test
     public void testPostRating() throws Exception {
-        mockMvc.perform(post("/videos/{id}", TEST_PET_ID).content("{\"stars\":0}")
+        mockMvc.perform(post("/commands/rate-video")
+                .content("{\"pet\":" + TEST_PET_ID + ",\"stars\":1}")
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     @Test
     public void testGetTemplate() throws Exception {
-        mockMvc.perform(get("/videos/templates/pet.html"))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/videos/templates/pet.html")).andExpect(status().isOk())
                 .andExpect(content().string(containsString("Video of {{pet.name}}")));
     }
 
     @Test
     public void testGetScript() throws Exception {
-        mockMvc.perform(get("/videos/js/app.js"))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/videos/js/app.js")).andExpect(status().isOk())
                 .andExpect(content().string(containsString(".module(\"")));
     }
 

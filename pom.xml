@@ -16,6 +16,7 @@
 
 	<modules>
 		<module>videos</module>
+		<module>commander</module>
 		<module>core</module>
 	</modules>
 
