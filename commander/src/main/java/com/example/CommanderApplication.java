@@ -41,7 +41,7 @@ public class CommanderApplication {
 
     @Bean("store/commands")
     public Function<Flux<String>, Flux<Command>> store() {
-        return ids -> ids.map(id -> commandsById.get(id)).log();
+        return ids -> ids.map(id -> commandsById.get(id)).log("store/commands");
     }
 
     @Bean("replay/commands")

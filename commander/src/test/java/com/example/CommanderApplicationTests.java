@@ -34,8 +34,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.springframework.cloud.contract.wiremock.restdocs.WireMockRestDocs.verify;
+import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.document;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+
+import reactor.core.publisher.Flux;
 
 /**
  * @author Dave Syer
@@ -53,6 +57,9 @@ public class CommanderApplicationTests {
     @Autowired
     private ObjectMapper mapper;
 
+    @Autowired
+    private CommanderApplication application;
+
     @Test
     public void commands() throws Exception {
         rest.perform(post("/commands")
@@ -64,6 +71,17 @@ public class CommanderApplicationTests {
                 .andExpect(content().string(containsString("\"id\"")))
                 .andDo(verify().jsonPath("$[0].data.stars")
                         .jsonPath("$[0].action", "rate-video").stub("commands"));
+    }
+
+    @Test
+    public void getById() throws Exception {
+        application.commands().accept(Flux.just(
+                new Command("rate-video").data(Collections.singletonMap("stars", 2))));
+        String id = application.replay().get().blockFirst().getId();
+        rest.perform(get("/store/commands/{id}", id).accept(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().string(containsString("\"id\"")))
+                .andDo(document("command"));
     }
 
 }
