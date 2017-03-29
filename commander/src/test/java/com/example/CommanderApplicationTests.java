@@ -74,7 +74,7 @@ public class CommanderApplicationTests {
     }
 
     @Test
-    public void getById() throws Exception {
+    public void getCommandById() throws Exception {
         application.commands().accept(Flux.just(
                 new Command("rate-video").data(Collections.singletonMap("stars", 2))));
         String id = application.replay().get().blockFirst().getId();
@@ -82,6 +82,20 @@ public class CommanderApplicationTests {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("\"id\"")))
                 .andDo(document("command"));
+    }
+
+    @Test
+    public void getEventById() throws Exception {
+        application.commands().accept(Flux.just(
+                new Command("rate-video").data(Collections.singletonMap("stars", 3))));
+        String command = application.replay().get().blockFirst().getId();
+        application.events().accept(Flux.just(new Event("rated-video")
+                .data(Collections.singletonMap("stars", 3)).parent(command)));
+        String id = application.eventSupplier().get().blockFirst().getId();
+        rest.perform(get("/store/events/{id}", id).accept(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().string(containsString("\"id\"")))
+                .andDo(document("event"));
     }
 
 }

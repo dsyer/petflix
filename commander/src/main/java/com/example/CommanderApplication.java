@@ -40,8 +40,8 @@ public class CommanderApplication {
     }
 
     @Bean("store/commands")
-    public Function<Flux<String>, Flux<Command>> store() {
-        return ids -> ids.map(id -> commandsById.get(id)).log("store/commands");
+    public Function<String, Command> store() {
+        return id -> commandsById.get(id);
     }
 
     @Bean("replay/commands")
@@ -62,8 +62,8 @@ public class CommanderApplication {
     }
 
     @Bean("store/events")
-    public Function<Flux<String>, Flux<Event>> eventsById() {
-        return ids -> ids.map(id -> eventsById.get(id)).log();
+    public Function<String, Event> eventsById() {
+        return id -> eventsById.get(id);
     }
 
     @Bean("replay/events")
@@ -148,6 +148,13 @@ class Metadata<T extends Metadata<T>> {
 
     public void setParent(String parent) {
         this.parent = parent;
+    }
+
+    public T parent(String parent) {
+        setParent(parent);
+        @SuppressWarnings("unchecked")
+        T result = (T) this;
+        return result;
     }
 
     public Map<String, Object> getData() {
