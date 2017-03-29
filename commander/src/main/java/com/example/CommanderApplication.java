@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -30,44 +31,42 @@ public class CommanderApplication {
     private Map<String, Event> eventsById = new HashMap<>();
 
     @Bean
-    public Function<Flux<Command>, Flux<Command>> commands() {
-        return commands -> commands.map(command -> {
+    public Consumer<Flux<Command>> commands() {
+        return commands -> commands.subscribe(command -> {
             if (commandsById.computeIfAbsent(command.getId(), id -> command) != null) {
                 this.commands.add(command);
             }
-            return command;
         });
     }
 
-    @Bean
+    @Bean("store/commands")
     public Function<Flux<String>, Flux<Command>> store() {
         return ids -> ids.map(id -> commandsById.get(id)).log();
     }
 
-    @Bean
+    @Bean("replay/commands")
     public Supplier<Flux<Command>> replay() {
         return () -> Flux.fromIterable(commands);
     }
 
     @Bean
-    public Function<Flux<Event>, Flux<Event>> events() {
+    public Consumer<Flux<Event>> events() {
         return events -> events.filter( //
                 event -> eventsById.containsKey(event.getParent())
                         || commandsById.containsKey(event.getParent()) //
-        ).map(event -> {
+        ).subscribe(event -> {
             if (eventsById.computeIfAbsent(event.getId(), id -> event) != null) {
                 this.events.add(event);
             }
-            return event;
-        }).log();
+        });
     }
 
-    @Bean
+    @Bean("store/events")
     public Function<Flux<String>, Flux<Event>> eventsById() {
         return ids -> ids.map(id -> eventsById.get(id)).log();
     }
 
-    @Bean
+    @Bean("replay/events")
     public Supplier<Flux<Event>> eventSupplier() {
         return () -> Flux.fromIterable(events);
     }
