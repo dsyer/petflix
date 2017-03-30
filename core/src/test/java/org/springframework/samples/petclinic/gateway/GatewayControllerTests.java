@@ -48,7 +48,7 @@ public class GatewayControllerTests {
     public void testPostRating() throws Exception {
         mockMvc.perform(post("/commands/rate-video")
                 .content("{\"pet\":" + TEST_PET_ID + ",\"stars\":1}")
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isAccepted());
     }
 
     @Test

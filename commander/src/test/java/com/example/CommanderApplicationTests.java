@@ -51,51 +51,50 @@ import reactor.core.publisher.Flux;
 @AutoConfigureRestDocs(outputDir = "target/snippets")
 public class CommanderApplicationTests {
 
-    @Autowired
-    private MockMvc rest;
+	@Autowired
+	private MockMvc rest;
 
-    @Autowired
-    private ObjectMapper mapper;
+	@Autowired
+	private ObjectMapper mapper;
 
-    @Autowired
-    private CommanderApplication application;
+	@Autowired
+	private CommanderApplication application;
 
-    @Test
-    public void commands() throws Exception {
-        rest.perform(post("/commands")
-                .content(mapper.writeValueAsString(Arrays.asList(new Command("rate-video")
-                        .data(Collections.singletonMap("stars", 2)))))
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(containsString("\"id\"")))
-                .andDo(verify().jsonPath("$[0].data.stars")
-                        .jsonPath("$[0].action", "rate-video").stub("commands"));
-    }
+	@Test
+	public void commands() throws Exception {
+		rest.perform(post("/commands")
+				.content(mapper.writeValueAsString(Arrays.asList(new Command("rate-video")
+						.data(Collections.singletonMap("stars", 2)))))
+				.contentType(MediaType.APPLICATION_JSON)
+				.accept(MediaType.APPLICATION_JSON))
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andExpect(content().string(containsString("\"id\"")))
+				.andDo(verify().jsonPath("$[0].data.stars")
+						.jsonPath("$[0].action", "rate-video").stub("commands"));
+	}
 
-    @Test
+	@Test
     public void getCommandById() throws Exception {
         application.commands().accept(Flux.just(
                 new Command("rate-video").data(Collections.singletonMap("stars", 2))));
-        String id = application.replay().get().blockFirst().getId();
-        rest.perform(get("/store/commands/{id}", id).accept(MediaType.APPLICATION_JSON))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        String id = application.replayCommands().get().blockFirst().getId();
+        rest.perform(get("/storeCommands/{id}", id).accept(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("\"id\"")))
                 .andDo(document("command"));
     }
 
-    @Test
-    public void getEventById() throws Exception {
-        application.commands().accept(Flux.just(
-                new Command("rate-video").data(Collections.singletonMap("stars", 3))));
-        String command = application.replay().get().blockFirst().getId();
-        application.events().accept(Flux.just(new Event("rated-video")
-                .data(Collections.singletonMap("stars", 3)).parent(command)));
-        String id = application.eventSupplier().get().blockFirst().getId();
-        rest.perform(get("/store/events/{id}", id).accept(MediaType.APPLICATION_JSON))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().string(containsString("\"id\"")))
-                .andDo(document("event"));
-    }
+	@Test
+	public void getEventById() throws Exception {
+		application.commands().accept(Flux.just(
+				new Command("rate-video").data(Collections.singletonMap("stars", 3))));
+		String command = application.replayCommands().get().blockFirst().getId();
+		application.events().accept(Flux.just(new Event("rated-video")
+				.data(Collections.singletonMap("stars", 3)).parent(command)));
+		String id = application.replayEvents().get().blockFirst().getId();
+		rest.perform(get("/storeEvents/{id}", id).accept(MediaType.APPLICATION_JSON))
+				.andExpect(content().contentType(MediaType.APPLICATION_JSON))
+				.andExpect(content().string(containsString("\"id\"")))
+				.andDo(document("event"));
+	}
 
 }

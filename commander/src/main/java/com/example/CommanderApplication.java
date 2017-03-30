@@ -39,13 +39,13 @@ public class CommanderApplication {
         });
     }
 
-    @Bean("store/commands")
-    public Function<String, Command> store() {
-        return id -> commandsById.get(id);
+    @Bean
+    public Function<Flux<String>, Flux<Command>> storeCommands() {
+        return ids -> ids.map(id -> commandsById.get(id));
     }
 
-    @Bean("replay/commands")
-    public Supplier<Flux<Command>> replay() {
+    @Bean
+    public Supplier<Flux<Command>> replayCommands() {
         return () -> Flux.fromIterable(commands);
     }
 
@@ -61,13 +61,13 @@ public class CommanderApplication {
         });
     }
 
-    @Bean("store/events")
-    public Function<String, Event> eventsById() {
-        return id -> eventsById.get(id);
+    @Bean
+    public Function<Flux<String>, Flux<Event>> storeEvents() {
+        return ids -> ids.map(id -> eventsById.get(id));
     }
 
-    @Bean("replay/events")
-    public Supplier<Flux<Event>> eventSupplier() {
+    @Bean
+    public Supplier<Flux<Event>> replayEvents() {
         return () -> Flux.fromIterable(events);
     }
 
