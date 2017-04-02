@@ -1,20 +1,17 @@
 package com.example;
 
 import java.util.Random;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.cloud.function.wiretap.EnableWiretap;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
 
 @SpringBootApplication
-@EnableWiretap(Rating.class)
 public class VideoApplication {
 
     @Autowired
@@ -23,13 +20,6 @@ public class VideoApplication {
     @Bean
     public Function<Flux<Integer>, Flux<Video>> videos() {
         return ids -> ids.map(id -> repo.findById(id)).log();
-    }
-
-    @Bean
-    public Function<Flux<Rating>, Flux<Video>> ratings(Consumer<Rating> wiretap) {
-        return ratings -> ratings.doOnNext(wiretap)
-                .map(rating -> repo.findById(rating.getId()).rate(rating.getStars()))
-                .log();
     }
 
     public static void main(String[] args) {

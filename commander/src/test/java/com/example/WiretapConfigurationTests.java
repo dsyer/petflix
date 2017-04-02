@@ -24,6 +24,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -39,17 +40,18 @@ import reactor.test.StepVerifier;
 public class WiretapConfigurationTests {
 
     @Autowired
-    private Consumer<Rating> wiretap;
+    private Consumer<Command> wiretap;
 
     @Autowired
-    private Supplier<Flux<Rating>> output;
+    @Qualifier("commandSupplier")
+    private Supplier<Flux<Command>> output;
 
     @Test
     public void test() {
-        Flux<Rating> flux = output.get();
+        Flux<Command> flux = output.get();
         // @formatter:off
         StepVerifier.create(flux.log())
-            .then(() -> wiretap.accept(new Rating())) 
+            .then(() -> wiretap.accept(new Command())) 
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofMillis(500L));
@@ -58,10 +60,10 @@ public class WiretapConfigurationTests {
 
     @Test
     public void again() {
-        Flux<Rating> flux = output.get();
+        Flux<Command> flux = output.get();
         // @formatter:off
         StepVerifier.create(flux.log())
-            .then(() -> wiretap.accept(new Rating())) 
+            .then(() -> wiretap.accept(new Command())) 
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofMillis(500L));

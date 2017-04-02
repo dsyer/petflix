@@ -16,10 +16,6 @@
 
 package com.example;
 
-import java.util.Arrays;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -37,7 +33,6 @@ import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuild
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.head;
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * @author Dave Syer
@@ -51,9 +46,6 @@ public class VideoApplicationTests {
 
     @Autowired
     private MockMvc rest;
-
-    @Autowired
-    private ObjectMapper mapper;
 
     @Test
     public void home() throws Exception {
@@ -96,33 +88,6 @@ public class VideoApplicationTests {
                 .andExpect(content().string(containsString("https://www.youtube.com")))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andDo(document("videos"));
-    }
-
-    @Test
-    public void ratings() throws Exception {
-        rest.perform(post("/ratings").contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .content(mapper.writeValueAsString(Arrays.asList(new Rating()))))
-                .andExpect(content().string(containsString("https://www.youtube.com")))
-                .andDo(document("ratings"));
-    }
-
-    @Test
-    public void wiretap() throws Exception {
-        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())));
-        rest.perform(get("/ratingSupplier")).andExpect(status().isOk())
-                .andExpect(content().string(containsString("stars")))
-                .andDo(document("wiretap"));
-    }
-
-    @Test
-    public void twice() throws Exception {
-        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())));
-        rest.perform(get("/ratingSupplier")).andExpect(status().isOk())
-                .andExpect(content().string(containsString("stars")));
-        rest.perform(post("/ratings").content(mapper.writeValueAsString(new Rating())));
-        rest.perform(get("/ratingSupplier")).andExpect(status().isOk())
-                .andExpect(content().string(containsString("stars")));
     }
 
 }

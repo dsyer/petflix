@@ -15,11 +15,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.cloud.function.context.FunctionEntry;
+import org.springframework.cloud.function.wiretap.EnableWiretap;
 import org.springframework.context.annotation.Bean;
 
 import reactor.core.publisher.Flux;
 
 @SpringBootApplication
+@EnableWiretap(Command.class)
 public class CommanderApplication {
 
     private List<Command> commands = new ArrayList<>();
@@ -40,11 +43,13 @@ public class CommanderApplication {
     }
 
     @Bean
+    @FunctionEntry("commands")
     public Function<Flux<String>, Flux<Command>> storeCommands() {
         return ids -> ids.map(id -> commandsById.get(id));
     }
 
     @Bean
+    @FunctionEntry("commands")
     public Supplier<Flux<Command>> replayCommands() {
         return () -> Flux.fromIterable(commands);
     }
@@ -62,11 +67,13 @@ public class CommanderApplication {
     }
 
     @Bean
+    @FunctionEntry("events")
     public Function<Flux<String>, Flux<Event>> storeEvents() {
         return ids -> ids.map(id -> eventsById.get(id));
     }
 
     @Bean
+    @FunctionEntry("events")
     public Supplier<Flux<Event>> replayEvents() {
         return () -> Flux.fromIterable(events);
     }
