@@ -17,22 +17,19 @@
 package com.example;
 
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.function.wiretap.EnableWiretap;
+import org.springframework.cloud.function.wiretap.EnableBridge;
+import org.springframework.cloud.function.wiretap.Bridge;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
-
-import reactor.core.publisher.Flux;
 
 /**
  * @author Dave Syer
@@ -43,11 +40,7 @@ import reactor.core.publisher.Flux;
 public class MultipleWiretapConfigurationTests {
 
     @Autowired
-    private Consumer<Command> wiretap;
-
-    @Autowired
-    @Qualifier("commandSupplier")
-    private Supplier<Flux<Command>> output;
+    private Bridge<Command> wiretap;
 
     @Autowired
     private ApplicationContext context;
@@ -55,12 +48,11 @@ public class MultipleWiretapConfigurationTests {
     @Test
     public void test() {
         assertThat(wiretap).isNotNull();
-        assertThat(output).isNotNull();
-        assertThat(context.getBeanNamesForType(Consumer.class)).hasSize(4);
+        assertThat(context.getBeanNamesForType(Consumer.class)).hasSize(2);
     }
 
     @TestConfiguration
-    @EnableWiretap(Foo.class)
+    @EnableBridge(Foo.class)
     protected static class ExtraWiretap {
     }
 

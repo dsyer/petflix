@@ -17,15 +17,13 @@
 package com.example;
 
 import java.time.Duration;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.cloud.function.wiretap.Bridge;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import reactor.core.publisher.Flux;
@@ -40,18 +38,14 @@ import reactor.test.StepVerifier;
 public class WiretapConfigurationTests {
 
     @Autowired
-    private Consumer<Command> wiretap;
-
-    @Autowired
-    @Qualifier("commandSupplier")
-    private Supplier<Flux<Command>> output;
+    private Bridge<Command> wiretap;
 
     @Test
     public void test() {
-        Flux<Command> flux = output.get();
+        Flux<Command> flux = wiretap.supplier().get();
         // @formatter:off
         StepVerifier.create(flux.log())
-            .then(() -> wiretap.accept(new Command())) 
+            .then(() -> wiretap.consumer().accept(new Command())) 
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofMillis(500L));
@@ -60,10 +54,10 @@ public class WiretapConfigurationTests {
 
     @Test
     public void again() {
-        Flux<Command> flux = output.get();
+        Flux<Command> flux = wiretap.supplier().get();
         // @formatter:off
         StepVerifier.create(flux.log())
-            .then(() -> wiretap.accept(new Command())) 
+            .then(() -> wiretap.consumer().accept(new Command())) 
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofMillis(500L));

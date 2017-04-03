@@ -13,16 +13,18 @@ import java.util.function.Supplier;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
-import org.springframework.cloud.function.context.FunctionEntry;
-import org.springframework.cloud.function.wiretap.EnableWiretap;
+import org.springframework.cloud.function.wiretap.Bridge;
+import org.springframework.cloud.function.wiretap.EnableBridge;
 import org.springframework.context.annotation.Bean;
 
 import reactor.core.publisher.Flux;
 
 @SpringBootApplication
-@EnableWiretap(Command.class)
+@EnableBridge({Command.class, Event.class})
 public class CommanderApplication {
 
     private List<Command> commands = new ArrayList<>();
@@ -33,25 +35,37 @@ public class CommanderApplication {
 
     private Map<String, Event> eventsById = new HashMap<>();
 
+    @Autowired
+    private Bridge<Command> commandTap;
+
+    @Autowired
+    private Bridge<Event> eventTap;
+
     @Bean
     public Consumer<Flux<Command>> commands() {
         return commands -> commands.subscribe(command -> {
             if (commandsById.computeIfAbsent(command.getId(), id -> command) != null) {
+                commandTap.consumer().accept(command);
                 this.commands.add(command);
             }
         });
     }
 
     @Bean
-    @FunctionEntry("commands")
+    @Qualifier("commands")
     public Function<Flux<String>, Flux<Command>> storeCommands() {
         return ids -> ids.map(id -> commandsById.get(id));
     }
 
     @Bean
-    @FunctionEntry("commands")
+    @Qualifier("commands")
     public Supplier<Flux<Command>> replayCommands() {
         return () -> Flux.fromIterable(commands);
+    }
+
+    @Bean
+    public Supplier<Flux<Command>> exportCommands() {
+        return commandTap.supplier();
     }
 
     @Bean
@@ -61,21 +75,27 @@ public class CommanderApplication {
                         || commandsById.containsKey(event.getParent()) //
         ).subscribe(event -> {
             if (eventsById.computeIfAbsent(event.getId(), id -> event) != null) {
+                eventTap.consumer().accept(event);
                 this.events.add(event);
             }
         });
     }
 
     @Bean
-    @FunctionEntry("events")
+    @Qualifier("events")
     public Function<Flux<String>, Flux<Event>> storeEvents() {
         return ids -> ids.map(id -> eventsById.get(id));
     }
 
     @Bean
-    @FunctionEntry("events")
+    @Qualifier("events")
     public Supplier<Flux<Event>> replayEvents() {
         return () -> Flux.fromIterable(events);
+    }
+
+    @Bean
+    public Supplier<Flux<Event>> exportEvents() {
+        return eventTap.supplier();
     }
 
     public static void main(String[] args) {

@@ -16,27 +16,17 @@
 
 package org.springframework.cloud.function.wiretap;
 
-import java.lang.annotation.Documented;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-import org.springframework.context.annotation.Import;
+import reactor.core.publisher.Flux;
 
 /**
  * @author Dave Syer
  *
  */
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-@Import(WiretapRegistrar.class)
-public @interface EnableWiretap {
+public interface Bridge<T> {
 
-    /**
-     * A list of interfaces extending {@link Consumer}.
-     */
-    Class<?>[] value() default {};
+   Consumer<T> consumer();
+   Supplier<Flux<T>> supplier();
 }

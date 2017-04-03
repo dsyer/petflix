@@ -44,87 +44,94 @@ import reactor.core.publisher.UnicastProcessor;
  * @author Dave Syer
  *
  */
-public class WiretapRegistrar implements ImportBeanDefinitionRegistrar {
+public class BridgeRegistrar implements ImportBeanDefinitionRegistrar {
 
     @Override
     public void registerBeanDefinitions(AnnotationMetadata metadata,
             BeanDefinitionRegistry registry) {
         AnnotationAttributes attrs = AnnotatedElementUtils.getMergedAnnotationAttributes(
                 ClassUtils.resolveClassName(metadata.getClassName(), null),
-                EnableWiretap.class);
+                EnableBridge.class);
         for (Class<?> type : collectClasses(attrs, metadata.getClassName())) {
-            WiretapRegistrar.registerBeanDefinitions(type,
+            BridgeRegistrar.registerBeanDefinitions(type,
                     StringUtils.uncapitalize(type.getSimpleName()), registry);
         }
     }
 
     private Class<?>[] collectClasses(AnnotationAttributes attrs, String className) {
-        EnableWiretap enableBinding = AnnotationUtils.synthesizeAnnotation(attrs,
-                EnableWiretap.class, ClassUtils.resolveClassName(className, null));
+        EnableBridge enableBinding = AnnotationUtils.synthesizeAnnotation(attrs,
+                EnableBridge.class,
+                ClassUtils.resolveClassName(className, null));
         return enableBinding.value();
     }
 
     private static void registerBeanDefinitions(Class<?> type, String name,
             BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder consumer = BeanDefinitionBuilder
-                .rootBeanDefinition(ConsumerProxyFactory.class);
+                .rootBeanDefinition(FunctionChannelProxyFactory.class);
         FluxProcessor<Object, Object> emitter = UnicastProcessor.<Object>create()
                 .serialize();
-        consumer.addPropertyValue("interfaces", Consumer.class);
+        consumer.addPropertyValue("interfaces", Bridge.class);
         consumer.addConstructorArgValue(emitter);
         RootBeanDefinition bean = (RootBeanDefinition) consumer.getBeanDefinition();
-        bean.setTargetType(ResolvableType.forClassWithGenerics(Consumer.class, type));
-        registry.registerBeanDefinition(name + "Consumer", bean);
-        BeanDefinitionBuilder supplier = BeanDefinitionBuilder
-                .rootBeanDefinition(SupplierProxyFactory.class);
-        supplier.addPropertyValue("interfaces", Supplier.class);
-        supplier.addConstructorArgValue(emitter);
-        RootBeanDefinition output = (RootBeanDefinition) supplier.getBeanDefinition();
-        output.setTargetType(ResolvableType.forClassWithGenerics(Supplier.class,
-                ResolvableType.forClassWithGenerics(Flux.class, type)));
-        registry.registerBeanDefinition(name + "Supplier", output);
+        bean.setTargetType(
+                ResolvableType.forClassWithGenerics(Bridge.class, type));
+        registry.registerBeanDefinition(name + "FunctionChannel", bean);
     }
 
 }
 
-class ConsumerProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
+@SuppressWarnings("serial")
+class FunctionChannelProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
+
+    private final FunctionChannelConsumer consumer;
+    private final FunctionChannelSupplier supplier;
+
+    public FunctionChannelProxyFactory(FluxProcessor<Object, Object> emitter) {
+        this.consumer = new FunctionChannelConsumer(emitter);
+        this.supplier = new FunctionChannelSupplier(emitter);
+        addAdvice(this);
+    }
+
+    @Override
+    public Object invoke(MethodInvocation invocation) throws Throwable {
+        if (invocation.getMethod().getName().equals("consumer")) {
+            return consumer;
+        }
+        if (invocation.getMethod().getName().equals("supplier")) {
+            return supplier;
+        }
+        return invocation.proceed();
+    }
+
+}
+
+class FunctionChannelConsumer implements Consumer<Object> {
 
     private final FluxProcessor<Object, Object> emitter;
 
-    public ConsumerProxyFactory(FluxProcessor<Object, Object> emitter) {
+    public FunctionChannelConsumer(FluxProcessor<Object, Object> emitter) {
         this.emitter = emitter;
-        addAdvice(this);
     }
 
     @Override
-    public Object invoke(MethodInvocation invocation) throws Throwable {
-        if (invocation.getMethod().getName().equals("accept")) {
-            emitter.onNext(invocation.getArguments()[0]);
-            return null;
-        }
-        return invocation.proceed();
+    public void accept(Object object) {
+        emitter.onNext(object);
     }
 
 }
 
-class SupplierProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
+class FunctionChannelSupplier implements Supplier<Flux<Object>> {
 
     private final Flux<Object> sink;
 
-    public SupplierProxyFactory(FluxProcessor<Object, Object> emitter) {
-        // TODO: maybe think about the contract for clients a bit more. Right now we allow
-        // successive clients to receive duplicate data if they subscribe within 100ms of
-        // each other (c.f. the timeout for closing the client connection is 1000ms).
-        sink = emitter.log().replay(Duration.ofMillis(100L)).autoConnect().log();
-        addAdvice(this);
+    public FunctionChannelSupplier(FluxProcessor<Object, Object> emitter) {
+        this.sink = emitter.log().replay(Duration.ofMillis(100L)).autoConnect().log();
     }
 
     @Override
-    public Object invoke(MethodInvocation invocation) throws Throwable {
-        if (invocation.getMethod().getName().equals("get")) {
-            return sink;
-        }
-        return invocation.proceed();
+    public Flux<Object> get() {
+        return sink;
     }
 
 }
