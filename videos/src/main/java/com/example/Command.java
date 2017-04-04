@@ -14,23 +14,28 @@
  * limitations under the License.
  */
 
-package org.springframework.cloud.function.wiretap;
+package com.example;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
-import reactor.core.publisher.Flux;
+@JsonInclude(JsonInclude.Include.NON_EMPTY)
+public class Command extends Metadata<Command> {
 
-/**
- * @author Dave Syer
- *
- */
-public interface Bridge<T> {
+    private String action;
 
-    Consumer<T> consumer();
+    Command() {
+    }
 
-    Supplier<Flux<T>> supplier();
+    public Command(String action) {
+        this.action = action;
+    }
 
-    Supplier<Flux<T>> supplier(Function<Flux<T>, Flux<T>> transformer);
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
+    }
+
 }

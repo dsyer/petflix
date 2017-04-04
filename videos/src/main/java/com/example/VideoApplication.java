@@ -1,6 +1,7 @@
 package com.example;
 
 import java.util.Random;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,16 @@ public class VideoApplication {
     @Bean
     public Function<Flux<Integer>, Flux<Video>> videos() {
         return ids -> ids.map(id -> repo.findById(id)).log();
+    }
+
+    @Bean
+    public Consumer<Flux<Command>> commands() {
+        return commands -> commands.subscribe(command -> {
+            System.err.println(command);
+            if ("rate-video".equals(command.getAction())) {
+                // rate it...
+            }
+        });
     }
 
     public static void main(String[] args) {

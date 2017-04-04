@@ -16,8 +16,9 @@
 
 package org.springframework.cloud.function.wiretap;
 
-import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.aopalliance.intercept.MethodInterceptor;
@@ -60,36 +61,35 @@ public class BridgeRegistrar implements ImportBeanDefinitionRegistrar {
 
     private Class<?>[] collectClasses(AnnotationAttributes attrs, String className) {
         EnableBridge enableBinding = AnnotationUtils.synthesizeAnnotation(attrs,
-                EnableBridge.class,
-                ClassUtils.resolveClassName(className, null));
+                EnableBridge.class, ClassUtils.resolveClassName(className, null));
         return enableBinding.value();
     }
 
     private static void registerBeanDefinitions(Class<?> type, String name,
             BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder consumer = BeanDefinitionBuilder
-                .rootBeanDefinition(FunctionChannelProxyFactory.class);
+                .rootBeanDefinition(BridgeProxyFactory.class);
         FluxProcessor<Object, Object> emitter = UnicastProcessor.<Object>create()
                 .serialize();
         consumer.addPropertyValue("interfaces", Bridge.class);
         consumer.addConstructorArgValue(emitter);
         RootBeanDefinition bean = (RootBeanDefinition) consumer.getBeanDefinition();
-        bean.setTargetType(
-                ResolvableType.forClassWithGenerics(Bridge.class, type));
+        bean.setTargetType(ResolvableType.forClassWithGenerics(Bridge.class, type));
         registry.registerBeanDefinition(name + "FunctionChannel", bean);
     }
 
 }
 
 @SuppressWarnings("serial")
-class FunctionChannelProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
+class BridgeProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
 
-    private final FunctionChannelConsumer consumer;
-    private final FunctionChannelSupplier supplier;
+    private final BridgeConsumer consumer;
+    private final BridgeSupplier supplier;
+    private volatile AtomicBoolean transformed = new AtomicBoolean(false);
 
-    public FunctionChannelProxyFactory(FluxProcessor<Object, Object> emitter) {
-        this.consumer = new FunctionChannelConsumer(emitter);
-        this.supplier = new FunctionChannelSupplier(emitter);
+    public BridgeProxyFactory(FluxProcessor<Object, Object> emitter) {
+        this.consumer = new BridgeConsumer(emitter);
+        this.supplier = new BridgeSupplier(emitter);
         addAdvice(this);
     }
 
@@ -99,18 +99,37 @@ class FunctionChannelProxyFactory extends ProxyFactoryBean implements MethodInte
             return consumer;
         }
         if (invocation.getMethod().getName().equals("supplier")) {
+            if (!transformed.getAndSet(true)) {
+                Function<Flux<Object>, Flux<Object>> transformer = getTransformer(
+                        invocation.getArguments());
+                supplier.apply(transformer);
+            }
             return supplier;
         }
         return invocation.proceed();
+
+    }
+
+    private Function<Flux<Object>, Flux<Object>> getTransformer(Object[] args) {
+        Function<Flux<Object>, Flux<Object>> transformer;
+        if (args.length > 0) {
+            @SuppressWarnings("unchecked")
+            Function<Flux<Object>, Flux<Object>> unchecked = (Function<Flux<Object>, Flux<Object>>) args[0];
+            transformer = unchecked;
+        }
+        else {
+            transformer = new BridgeSupplierTransformer();
+        }
+        return transformer;
     }
 
 }
 
-class FunctionChannelConsumer implements Consumer<Object> {
+class BridgeConsumer implements Consumer<Object> {
 
     private final FluxProcessor<Object, Object> emitter;
 
-    public FunctionChannelConsumer(FluxProcessor<Object, Object> emitter) {
+    public BridgeConsumer(FluxProcessor<Object, Object> emitter) {
         this.emitter = emitter;
     }
 
@@ -121,17 +140,30 @@ class FunctionChannelConsumer implements Consumer<Object> {
 
 }
 
-class FunctionChannelSupplier implements Supplier<Flux<Object>> {
+class BridgeSupplier implements Supplier<Flux<Object>> {
 
-    private final Flux<Object> sink;
+    private Flux<Object> sink;
 
-    public FunctionChannelSupplier(FluxProcessor<Object, Object> emitter) {
-        this.sink = emitter.log().replay(Duration.ofMillis(100L)).autoConnect().log();
+    public BridgeSupplier(FluxProcessor<Object, Object> emitter) {
+        this.sink = emitter;
+    }
+
+    public void apply(Function<Flux<Object>, Flux<Object>> transformer) {
+        this.sink = transformer.apply(this.sink);
     }
 
     @Override
     public Flux<Object> get() {
         return sink;
+    }
+
+}
+
+class BridgeSupplierTransformer implements Function<Flux<Object>, Flux<Object>> {
+
+    @Override
+    public Flux<Object> apply(Flux<Object> flux) {
+        return flux.replay().autoConnect();
     }
 
 }

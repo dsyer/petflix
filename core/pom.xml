@@ -147,6 +147,19 @@
             </exclusions>
         </dependency>
         <dependency>
+            <groupId>com.example</groupId>
+            <artifactId>petflix-commander</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <classifier>stubs</classifier>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>

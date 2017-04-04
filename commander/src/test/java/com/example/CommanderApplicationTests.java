@@ -38,6 +38,7 @@ import static org.springframework.restdocs.mockmvc.MockMvcRestDocumentation.docu
 import static org.springframework.restdocs.mockmvc.RestDocumentationRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import reactor.core.publisher.Flux;
 
@@ -95,6 +96,10 @@ public class CommanderApplicationTests {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("\"id\"")))
                 .andDo(document("event"));
+        rest.perform(get("/events").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+        rest.perform(get("/events").accept(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
     }
 
 }
