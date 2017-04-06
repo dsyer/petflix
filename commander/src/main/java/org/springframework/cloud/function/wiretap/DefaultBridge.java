@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2015 the original author or authors.
+ * Copyright 2016-2017 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,22 +17,33 @@
 package org.springframework.cloud.function.wiretap;
 
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.FluxProcessor;
 
 /**
  * @author Dave Syer
  *
  */
-public interface Bridge<T> {
+public class DefaultBridge<T> implements Bridge<T> {
 
-    Consumer<T> consumer();
+    private final FluxProcessor<T, T> emitter;
+    private final Flux<T> sink;
 
-    Supplier<Flux<T>> supplier();
-
-    default Function<Flux<T>, Flux<T>> broadcaster() {
-        return flux -> flux.replay().autoConnect();
+    public DefaultBridge(FluxProcessor<T, T> emitter) {
+        this.emitter = emitter;
+        this.sink = broadcaster().apply(emitter);
     }
+
+    @Override
+    public Consumer<T> consumer() {
+        return object -> emitter.onNext(object);
+    }
+
+    @Override
+    public Supplier<Flux<T>> supplier() {
+        return () -> sink;
+    }
+
 }

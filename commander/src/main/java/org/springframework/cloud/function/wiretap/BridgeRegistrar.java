@@ -16,11 +16,6 @@
 
 package org.springframework.cloud.function.wiretap;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
 
@@ -37,7 +32,6 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxProcessor;
 import reactor.core.publisher.UnicastProcessor;
 
@@ -75,7 +69,7 @@ public class BridgeRegistrar implements ImportBeanDefinitionRegistrar {
         consumer.addConstructorArgValue(emitter);
         RootBeanDefinition bean = (RootBeanDefinition) consumer.getBeanDefinition();
         bean.setTargetType(ResolvableType.forClassWithGenerics(Bridge.class, type));
-        registry.registerBeanDefinition(name + "FunctionChannel", bean);
+        registry.registerBeanDefinition(name + "Bridge", bean);
     }
 
 }
@@ -83,87 +77,21 @@ public class BridgeRegistrar implements ImportBeanDefinitionRegistrar {
 @SuppressWarnings("serial")
 class BridgeProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
 
-    private final BridgeConsumer consumer;
-    private final BridgeSupplier supplier;
-    private volatile AtomicBoolean transformed = new AtomicBoolean(false);
+    private final DefaultBridge<Object> delegate;
 
     public BridgeProxyFactory(FluxProcessor<Object, Object> emitter) {
-        this.consumer = new BridgeConsumer(emitter);
-        this.supplier = new BridgeSupplier(emitter);
+        this.delegate = new DefaultBridge<Object>(emitter);
         addAdvice(this);
     }
 
     @Override
     public Object invoke(MethodInvocation invocation) throws Throwable {
-        if (invocation.getMethod().getName().equals("consumer")) {
-            return consumer;
-        }
-        if (invocation.getMethod().getName().equals("supplier")) {
-            if (!transformed.getAndSet(true)) {
-                Function<Flux<Object>, Flux<Object>> transformer = getTransformer(
-                        invocation.getArguments());
-                supplier.apply(transformer);
-            }
-            return supplier;
+        if (invocation.getMethod().getName().equals("consumer")
+                || invocation.getMethod().getName().equals("supplier")) {
+            return invocation.getMethod().invoke(delegate, invocation.getArguments());
         }
         return invocation.proceed();
-
-    }
-
-    private Function<Flux<Object>, Flux<Object>> getTransformer(Object[] args) {
-        Function<Flux<Object>, Flux<Object>> transformer;
-        if (args.length > 0) {
-            @SuppressWarnings("unchecked")
-            Function<Flux<Object>, Flux<Object>> unchecked = (Function<Flux<Object>, Flux<Object>>) args[0];
-            transformer = unchecked;
-        }
-        else {
-            transformer = new BridgeSupplierTransformer();
-        }
-        return transformer;
     }
 
 }
 
-class BridgeConsumer implements Consumer<Object> {
-
-    private final FluxProcessor<Object, Object> emitter;
-
-    public BridgeConsumer(FluxProcessor<Object, Object> emitter) {
-        this.emitter = emitter;
-    }
-
-    @Override
-    public void accept(Object object) {
-        emitter.onNext(object);
-    }
-
-}
-
-class BridgeSupplier implements Supplier<Flux<Object>> {
-
-    private Flux<Object> sink;
-
-    public BridgeSupplier(FluxProcessor<Object, Object> emitter) {
-        this.sink = emitter;
-    }
-
-    public void apply(Function<Flux<Object>, Flux<Object>> transformer) {
-        this.sink = transformer.apply(this.sink);
-    }
-
-    @Override
-    public Flux<Object> get() {
-        return sink;
-    }
-
-}
-
-class BridgeSupplierTransformer implements Function<Flux<Object>, Flux<Object>> {
-
-    @Override
-    public Flux<Object> apply(Flux<Object> flux) {
-        return flux.replay().autoConnect();
-    }
-
-}

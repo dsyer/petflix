@@ -1,6 +1,5 @@
 package com.example;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +60,7 @@ public class CommanderApplication {
 
     @Bean
     public Supplier<Flux<Command>> exportCommands() {
-        return () -> commandBridge.supplier(flux -> flux.replay(Duration.ofMillis(100L)).autoConnect().log()).get();
+        return commandBridge.supplier();
     }
 
     @Bean
