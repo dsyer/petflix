@@ -49,7 +49,7 @@ public class CommanderApplication {
     public Consumer<Flux<Command>> commands() {
         return commands -> commands.subscribe(command -> {
             if (commandsById.computeIfAbsent(command.getId(), id -> command) != null) {
-                commandBridge.consumer().accept(command);
+                commandBridge.send(command);
                 this.commands.add(command);
             }
         });
@@ -69,7 +69,7 @@ public class CommanderApplication {
 
     @Bean
     public Supplier<Flux<Command>> exportCommands(Bridge<Command> commandBridge) {
-        return commandBridge.supplier();
+        return () -> commandBridge.receive();
     }
 
     @Bean
@@ -79,7 +79,7 @@ public class CommanderApplication {
                         || commandsById.containsKey(event.getParent()) //
         ).subscribe(event -> {
             if (eventsById.computeIfAbsent(event.getId(), id -> event) != null) {
-                eventBridge.consumer().accept(event);
+                eventBridge.send(event);
                 this.events.add(event);
             }
         });
@@ -99,7 +99,7 @@ public class CommanderApplication {
 
     @Bean
     public Supplier<Flux<Event>> exportEvents(Bridge<Event> eventBridge) {
-        return eventBridge.supplier();
+        return () -> eventBridge.receive();
     }
 
     public static void main(String[] args) {

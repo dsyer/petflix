@@ -16,12 +16,14 @@
 
 package org.springframework.cloud.function.wiretap;
 
-import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import org.reactivestreams.Processor;
+import org.reactivestreams.Publisher;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.UnicastProcessor;
 
 /**
  * @author Dave Syer
@@ -38,13 +40,20 @@ public class DefaultBridge<T> implements Bridge<T> {
     }
 
     @Override
-    public Consumer<T> consumer() {
-        return object -> emitter.onNext(object);
+    public void send(T item) {
+        emitter.onNext(item);
     }
 
     @Override
-    public Supplier<Flux<T>> supplier() {
-        return () -> sink;
+    public Flux<T> receive() {
+        return sink;
     }
 
+    protected Supplier<Processor<T, T>> emitter() {
+        return () -> UnicastProcessor.<T>create().serialize();
+    }
+
+    protected Function<Publisher<T>, Flux<T>> broadcaster() {
+        return flux -> Flux.from(flux).replay().autoConnect();
+    }
 }

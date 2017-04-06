@@ -16,15 +16,7 @@
 
 package org.springframework.cloud.function.wiretap;
 
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
-import org.reactivestreams.Processor;
-import org.reactivestreams.Publisher;
-
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.UnicastProcessor;
 
 /**
  * @author Dave Syer
@@ -32,15 +24,8 @@ import reactor.core.publisher.UnicastProcessor;
  */
 public interface Bridge<T> {
 
-    Consumer<T> consumer();
+    void send(T item);
 
-    Supplier<Flux<T>> supplier();
-    
-    default Supplier<Processor<T, T>> emitter() {
-        return () -> UnicastProcessor.<T>create().serialize();
-    }
+    Flux<T> receive();
 
-    default Function<Publisher<T>, Flux<T>> broadcaster() {
-        return flux -> Flux.from(flux).replay().autoConnect();
-    }
 }

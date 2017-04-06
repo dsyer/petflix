@@ -42,10 +42,10 @@ public class WiretapConfigurationTests {
 
     @Test
     public void test() {
-        Flux<Command> flux = wiretap.supplier().get();
+        Flux<Command> flux = wiretap.receive();
         // @formatter:off
         StepVerifier.create(flux.log())
-            .then(() -> wiretap.consumer().accept(new Command())) 
+            .then(() -> wiretap.send(new Command())) 
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofMillis(500L));
@@ -54,10 +54,10 @@ public class WiretapConfigurationTests {
 
     @Test
     public void again() {
-        Flux<Command> flux = wiretap.supplier().get();
+        Flux<Command> flux = wiretap.receive();
         // @formatter:off
         StepVerifier.create(flux.log())
-            .then(() -> wiretap.consumer().accept(new Command())) 
+            .then(() -> wiretap.send(new Command())) 
             .expectNextCount(1)
             .thenCancel()
             .verify(Duration.ofMillis(500L));
