@@ -24,9 +24,10 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.cloud.function.wiretap.EnableBridge;
 import org.springframework.cloud.function.wiretap.Bridge;
+import org.springframework.cloud.function.wiretap.DefaultBridge;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,8 +53,11 @@ public class MultipleWiretapConfigurationTests {
     }
 
     @TestConfiguration
-    @EnableBridge(Foo.class)
     protected static class ExtraWiretap {
+        @Bean
+        public Bridge<Foo> fooBridge() {
+            return new DefaultBridge<>();
+        }
     }
 
     protected static class Foo {

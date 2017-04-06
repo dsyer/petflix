@@ -13,13 +13,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.cloud.function.wiretap.Bridge;
-import org.springframework.cloud.function.wiretap.EnableBridge;
+import org.springframework.cloud.function.wiretap.DefaultBridge;
 import org.springframework.context.annotation.Bean;
 
 import reactor.core.publisher.Flux;
 
 @SpringBootApplication
-@EnableBridge({Command.class, Event.class})
 public class CommanderApplication {
 
     private List<Command> commands = new ArrayList<>();
@@ -35,6 +34,16 @@ public class CommanderApplication {
 
     @Autowired
     private Bridge<Event> eventBridge;
+
+    @Bean
+    protected Bridge<Command> commandBridge() {
+        return new DefaultBridge<>();
+    };
+
+    @Bean
+    protected Bridge<Event> eventBridge() {
+        return new DefaultBridge<>();
+    }
 
     @Bean
     public Consumer<Flux<Command>> commands() {
@@ -59,7 +68,7 @@ public class CommanderApplication {
     }
 
     @Bean
-    public Supplier<Flux<Command>> exportCommands() {
+    public Supplier<Flux<Command>> exportCommands(Bridge<Command> commandBridge) {
         return commandBridge.supplier();
     }
 
@@ -89,7 +98,7 @@ public class CommanderApplication {
     }
 
     @Bean
-    public Supplier<Flux<Event>> exportEvents() {
+    public Supplier<Flux<Event>> exportEvents(Bridge<Event> eventBridge) {
         return eventBridge.supplier();
     }
 
