@@ -32,8 +32,8 @@ public class DefaultBridge<T> implements Bridge<T> {
     private final Processor<T, T> emitter;
     private final Flux<T> sink;
 
-    public DefaultBridge(Processor<T, T> emitter) {
-        this.emitter = emitter;
+    public DefaultBridge() {
+        this.emitter = emitter().get();
         this.sink = broadcaster().apply(emitter);
     }
 

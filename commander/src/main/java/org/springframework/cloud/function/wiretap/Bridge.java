@@ -20,9 +20,11 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.reactivestreams.Processor;
 import org.reactivestreams.Publisher;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.UnicastProcessor;
 
 /**
  * @author Dave Syer
@@ -33,6 +35,10 @@ public interface Bridge<T> {
     Consumer<T> consumer();
 
     Supplier<Flux<T>> supplier();
+    
+    default Supplier<Processor<T, T>> emitter() {
+        return () -> UnicastProcessor.<T>create().serialize();
+    }
 
     default Function<Publisher<T>, Flux<T>> broadcaster() {
         return flux -> Flux.from(flux).replay().autoConnect();

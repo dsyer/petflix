@@ -32,9 +32,6 @@ import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
-import reactor.core.publisher.FluxProcessor;
-import reactor.core.publisher.UnicastProcessor;
-
 /**
  * @author Dave Syer
  *
@@ -63,10 +60,7 @@ public class BridgeRegistrar implements ImportBeanDefinitionRegistrar {
             BeanDefinitionRegistry registry) {
         BeanDefinitionBuilder consumer = BeanDefinitionBuilder
                 .rootBeanDefinition(BridgeProxyFactory.class);
-        FluxProcessor<Object, Object> emitter = UnicastProcessor.<Object>create()
-                .serialize();
         consumer.addPropertyValue("interfaces", Bridge.class);
-        consumer.addConstructorArgValue(emitter);
         RootBeanDefinition bean = (RootBeanDefinition) consumer.getBeanDefinition();
         bean.setTargetType(ResolvableType.forClassWithGenerics(Bridge.class, type));
         registry.registerBeanDefinition(name + "Bridge", bean);
@@ -79,8 +73,8 @@ class BridgeProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
 
     private final DefaultBridge<Object> delegate;
 
-    public BridgeProxyFactory(FluxProcessor<Object, Object> emitter) {
-        this.delegate = new DefaultBridge<Object>(emitter);
+    public BridgeProxyFactory() {
+        this.delegate = new DefaultBridge<Object>();
         addAdvice(this);
     }
 
@@ -94,4 +88,3 @@ class BridgeProxyFactory extends ProxyFactoryBean implements MethodInterceptor {
     }
 
 }
-
