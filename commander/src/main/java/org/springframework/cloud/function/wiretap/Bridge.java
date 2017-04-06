@@ -20,6 +20,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import org.reactivestreams.Publisher;
+
 import reactor.core.publisher.Flux;
 
 /**
@@ -32,7 +34,7 @@ public interface Bridge<T> {
 
     Supplier<Flux<T>> supplier();
 
-    default Function<Flux<T>, Flux<T>> broadcaster() {
-        return flux -> flux.replay().autoConnect();
+    default Function<Publisher<T>, Flux<T>> broadcaster() {
+        return flux -> Flux.from(flux).replay().autoConnect();
     }
 }

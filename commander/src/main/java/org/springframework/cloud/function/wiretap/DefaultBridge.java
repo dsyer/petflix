@@ -19,8 +19,9 @@ package org.springframework.cloud.function.wiretap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+import org.reactivestreams.Processor;
+
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.FluxProcessor;
 
 /**
  * @author Dave Syer
@@ -28,10 +29,10 @@ import reactor.core.publisher.FluxProcessor;
  */
 public class DefaultBridge<T> implements Bridge<T> {
 
-    private final FluxProcessor<T, T> emitter;
+    private final Processor<T, T> emitter;
     private final Flux<T> sink;
 
-    public DefaultBridge(FluxProcessor<T, T> emitter) {
+    public DefaultBridge(Processor<T, T> emitter) {
         this.emitter = emitter;
         this.sink = broadcaster().apply(emitter);
     }
