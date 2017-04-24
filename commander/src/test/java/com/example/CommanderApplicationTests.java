@@ -68,7 +68,7 @@ public class CommanderApplicationTests {
                         .data(Collections.singletonMap("stars", 2)))))
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON))
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("\"id\"")))
                 .andDo(verify().jsonPath("$[0].data.stars")
                         .jsonPath("$[0].action", "rate-video").stub("commands"));
