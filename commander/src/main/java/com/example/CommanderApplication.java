@@ -1,9 +1,5 @@
 package com.example;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -21,24 +17,16 @@ import reactor.core.publisher.Flux;
 @SpringBootApplication
 public class CommanderApplication {
 
-    private List<Command> commands = new ArrayList<>();
-
-    private Map<String, Command> commandsById = new HashMap<>();
-
-    private List<Event> events = new ArrayList<>();
-
-    private Map<String, Event> eventsById = new HashMap<>();
+    @Autowired
+    private Repository<Command> commands;
 
     @Autowired
-    private Bridge<Command> commandBridge;
-
-    @Autowired
-    private Bridge<Event> eventBridge;
+    private Repository<Event> events;
 
     @Bean
     protected Bridge<Command> commandBridge() {
         return new DefaultBridge<>();
-    };
+    }
 
     @Bean
     protected Bridge<Event> eventBridge() {
@@ -47,24 +35,19 @@ public class CommanderApplication {
 
     @Bean
     public Consumer<Flux<Command>> commands() {
-        return commands -> commands.subscribe(command -> {
-            if (commandsById.computeIfAbsent(command.getId(), id -> command) != null) {
-                commandBridge.send(command);
-                this.commands.add(command);
-            }
-        });
+        return commands -> commands.subscribe(this.commands::add);
     }
 
     @Bean
     @Qualifier("commands")
     public Function<Flux<String>, Flux<Command>> storeCommands() {
-        return ids -> ids.map(id -> commandsById.get(id));
+        return ids -> ids.map(this.commands::get);
     }
 
     @Bean
     @Qualifier("commands")
     public Supplier<Flux<Command>> replayCommands() {
-        return () -> Flux.fromIterable(commands);
+        return () -> Flux.fromIterable(commands.get());
     }
 
     @Bean
@@ -75,31 +58,36 @@ public class CommanderApplication {
     @Bean
     public Consumer<Flux<Event>> events() {
         return events -> events.filter( //
-                event -> eventsById.containsKey(event.getParent())
-                        || commandsById.containsKey(event.getParent()) //
-        ).subscribe(event -> {
-            if (eventsById.computeIfAbsent(event.getId(), id -> event) != null) {
-                eventBridge.send(event);
-                this.events.add(event);
-            }
-        });
+                event -> this.events.get(event.getParent()) != null
+                        || this.commands.get(event.getParent()) != null //
+        ).subscribe(this.events::add);
     }
 
     @Bean
     @Qualifier("events")
     public Function<Flux<String>, Flux<Event>> storeEvents() {
-        return ids -> ids.map(id -> eventsById.get(id));
+        return ids -> ids.map(id -> events.get(id));
     }
 
     @Bean
     @Qualifier("events")
     public Supplier<Flux<Event>> replayEvents() {
-        return () -> Flux.fromIterable(events);
+        return () -> Flux.fromIterable(events.get());
     }
 
     @Bean
     public Supplier<Flux<Event>> exportEvents(Bridge<Event> eventBridge) {
         return () -> eventBridge.receive();
+    }
+
+    @Bean
+    public SimpleRepository<Command> commandRepository(Bridge<Command> bridge) {
+        return new SimpleRepository<Command>(bridge);
+    }
+
+    @Bean
+    public SimpleRepository<Event> eventRepository(Bridge<Event> bridge) {
+        return new SimpleRepository<Event>(bridge);
     }
 
     public static void main(String[] args) {

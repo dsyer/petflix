@@ -9,8 +9,6 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
-import reactor.core.publisher.Flux;
-
 @SpringBootApplication
 public class VideoApplication {
 
@@ -18,18 +16,19 @@ public class VideoApplication {
     private VideoRepository repo;
 
     @Bean
-    public Function<Flux<Integer>, Flux<Video>> videos() {
-        return ids -> ids.map(id -> repo.findById(id)).log();
+    public Function<Integer, Video> videos() {
+        return id -> repo.findById(id);
     }
 
     @Bean
-    public Function<Flux<Command>, Flux<Event>> commands() {
-        return commands -> commands
-                .filter(command -> "rate-video".equals(command.getAction()))
-                .map(command -> {
-                    // rate it...
-                    return new Event("rated-video").data(command.getData());
-                });
+    public Function<Command, Event> commands() {
+        return command -> {
+            if ("rate-video".equals(command.getAction())) {
+                // rate it...
+                return new Event("rated-video").data(command.getData());
+            }
+            return null;
+        };
     }
 
     public static void main(String[] args) {
