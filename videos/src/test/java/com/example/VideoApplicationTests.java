@@ -84,7 +84,7 @@ public class VideoApplicationTests {
 
     @Test
     public void videos() throws Exception {
-        rest.perform(post("/videos").content("1").accept(MediaType.APPLICATION_JSON))
+        rest.perform(post("/videos").content("[1]").accept(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("https://www.youtube.com")))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andDo(document("videos"));

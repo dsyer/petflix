@@ -9,6 +9,8 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
+import reactor.core.publisher.Flux;
+
 @SpringBootApplication
 public class VideoApplication {
 
@@ -21,14 +23,13 @@ public class VideoApplication {
     }
 
     @Bean
-    public Function<Command, Event> commands() {
-        return command -> {
-            if ("rate-video".equals(command.getAction())) {
-                // rate it...
-                return new Event("rated-video").data(command.getData());
-            }
-            return null;
-        };
+    public Function<Flux<Command>, Flux<Event>> commands() {
+        return commands -> commands
+                .filter(command -> "rate-video".equals(command.getAction()))
+                .map(command -> {
+                    // rate it...
+                    return new Event("rated-video").data(command.getData());
+                });
     }
 
     public static void main(String[] args) {
