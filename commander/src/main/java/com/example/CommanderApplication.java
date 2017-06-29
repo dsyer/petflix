@@ -57,7 +57,7 @@ public class CommanderApplication {
 
     @Bean
     public Consumer<Flux<Event>> events() {
-        return events -> events.filter( //
+        return events -> events.log().filter( //
                 event -> this.events.get(event.getParent()) != null
                         || this.commands.get(event.getParent()) != null //
         ).subscribe(this.events::add);

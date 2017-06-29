@@ -98,4 +98,9 @@ public class Metadata<T extends Metadata<T>> {
     public void setChildren(Set<String> children) {
         this.children = children;
     }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " [id=" + id + ", parent=" + parent + "]";
+    }
 }

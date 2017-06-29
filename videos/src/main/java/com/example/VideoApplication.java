@@ -28,7 +28,7 @@ public class VideoApplication {
                 .filter(command -> "rate-video".equals(command.getAction()))
                 .map(command -> {
                     // rate it...
-                    return new Event("rated-video").data(command.getData());
+                    return new Event("rated-video").data(command.getData()).parent(command.getId());
                 });
     }
 
