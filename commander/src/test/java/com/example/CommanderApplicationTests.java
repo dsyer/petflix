@@ -68,7 +68,8 @@ public class CommanderApplicationTests {
                         .data(Collections.singletonMap("stars", 2)))))
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON))
-                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(
+                        content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("\"id\"")))
                 .andDo(verify().jsonPath("$[0].data.stars")
                         .jsonPath("$[0].action", "rate-video").stub("commands"));
@@ -76,8 +77,8 @@ public class CommanderApplicationTests {
 
     @Test
     public void getCommandById() throws Exception {
-        application.commands().accept(Flux.just(
-                new Command("rate-video").data(Collections.singletonMap("stars", 2))));
+        application.commands().accept(
+                new Command("rate-video").data(Collections.singletonMap("stars", 2)));
         String id = application.replayCommands().get().blockFirst().getId();
         rest.perform(get("/commands/{id}", id).accept(MediaType.APPLICATION_JSON))
                 .andExpect(content().string(containsString("\"id\"")))
@@ -86,8 +87,8 @@ public class CommanderApplicationTests {
 
     @Test
     public void getEventById() throws Exception {
-        application.commands().accept(Flux.just(
-                new Command("rate-video").data(Collections.singletonMap("stars", 3))));
+        application.commands().accept(
+                new Command("rate-video").data(Collections.singletonMap("stars", 3)));
         String command = application.replayCommands().get().blockFirst().getId();
         application.events().accept(Flux.just(new Event("rated-video")
                 .data(Collections.singletonMap("stars", 3)).parent(command)));

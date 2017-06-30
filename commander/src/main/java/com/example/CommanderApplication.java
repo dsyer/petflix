@@ -34,14 +34,14 @@ public class CommanderApplication {
     }
 
     @Bean
-    public Consumer<Flux<Command>> commands() {
-        return commands -> commands.subscribe(this.commands::add);
+    public Consumer<Command> commands() {
+        return this.commands::add;
     }
 
     @Bean
     @Qualifier("commands")
-    public Function<Flux<String>, Flux<Command>> storeCommands() {
-        return ids -> ids.map(this.commands::get);
+    public Function<String, Command> storeCommands() {
+        return this.commands::get;
     }
 
     @Bean
@@ -65,8 +65,8 @@ public class CommanderApplication {
 
     @Bean
     @Qualifier("events")
-    public Function<Flux<String>, Flux<Event>> storeEvents() {
-        return ids -> ids.map(id -> events.get(id));
+    public Function<String, Event> storeEvents() {
+        return events::get;
     }
 
     @Bean
