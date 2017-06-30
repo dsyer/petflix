@@ -16,8 +16,9 @@
 
 	<modules>
 		<module>videos</module>
-		<module>commander</module>
 		<module>core</module>
+		<module>browser</module>
+		<module>commander</module>
 	</modules>
 
 	<properties>
