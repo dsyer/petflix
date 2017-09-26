@@ -1,27 +1,28 @@
-<span ng-if="pet.video"><a href="#" title="Watch Video"
-  data-toggle="modal" data-target="#pet-{{pet.id}}"><i
-    class="glyphicon glyphicon-facetime-video"></i></a></span>
-<span><span ng-repeat="star in pet.stars"
-  class="glyphicon glyphicon-{{star}}"></span></span>
-<!-- Modal -->
-<div class="modal fade" id="pet-{{pet.id}}" role="dialog">
-  <div class="modal-dialog">
-    <!-- Modal content-->
-    <div class="modal-content">
-      <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal">&times;</button>
-        <h4 class="modal-title">
-          Video of {{pet.name}} <span><a href="#"
-            title="Rate this Video" ng-repeat="star in pet.stars"
-            class="glyphicon
+<div ng-controller="videos as videos">
+  <span ng-if="pet.video"><a href="#" title="Watch Video"
+    data-toggle="modal" data-target="#pet-{{pet.id}}"><i
+      class="glyphicon glyphicon-facetime-video"></i></a></span> <span><span
+    ng-repeat="star in pet.stars" class="glyphicon glyphicon-{{star}}"></span></span>
+  <!-- Modal -->
+  <div class="modal fade" id="pet-{{pet.id}}" role="dialog">
+    <div class="modal-dialog">
+      <!-- Modal content-->
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal">&times;</button>
+          <h4 class="modal-title">
+            Video of {{pet.name}} <span><a href="#"
+              title="Rate this Video" ng-repeat="star in pet.stars"
+              class="glyphicon
                     glyphicon-{{star}}"
-            ng-click="owner.rate(pet, $index+1)"></a></span>
-        </h4>
-      </div>
-      <div class="modal-body" ng-bind-html="pet.video"></div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-default"
-          data-dismiss="modal">Close</button>
+              ng-click="videos.rate($index+1)"></a></span>
+          </h4>
+        </div>
+        <div class="modal-body" ng-bind-html="pet.video"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default"
+            data-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>

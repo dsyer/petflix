@@ -27,13 +27,15 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.web.ResourceProperties;
-import org.springframework.cloud.function.gateway.ProxyExchange;
+import org.springframework.cloud.gateway.mvc.ProxyExchange;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;
 import org.springframework.web.servlet.resource.VersionResourceResolver;
@@ -59,6 +61,18 @@ class GatewayController extends WebMvcConfigurerAdapter {
         return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
     }
 
+    @GetMapping("/videos/**")
+    public Object petVideo(
+            @RequestAttribute(FeatureFilter.PETFLIX_ENABLED) boolean enabled,
+            ProxyExchange<?> proxy) throws Exception {
+        if (enabled) {
+            try {
+                return proxy.uri(videosUrl.toString() +"/resources" + proxy.path("/videos")).get();
+            } catch (Exception e) {}
+        }
+        return new ModelAndView(PathUtils.forward(proxy.path()));
+    }
+
     @PostMapping("/commands/{action}")
     public ResponseEntity<?> rater(@PathVariable String action,
             @RequestBody Map<String, Object> request,
@@ -74,7 +88,7 @@ class GatewayController extends WebMvcConfigurerAdapter {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/videos/**")
+        registry.addResourceHandler("/local/videos/**")
                 .addResourceLocations(videosUrl.toString() + "/resources/")
                 .resourceChain(resources.getChain().isCache()).addResolver(
                         new VersionResourceResolver().addContentVersionStrategy("/**"));
