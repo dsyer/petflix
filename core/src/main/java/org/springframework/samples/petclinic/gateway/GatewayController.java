@@ -58,7 +58,7 @@ class GatewayController extends WebMvcConfigurerAdapter {
     @GetMapping("/videos/{id}")
     public ResponseEntity<?> videos(@PathVariable Integer id, ProxyExchange<?> proxy)
             throws Exception {
-        return proxy.uri(videosUrl.toString() + "/videos/" + id).get();
+        return proxy.uri(videosUrl.toString() + "/stream/input/videos/" + id).get();
     }
 
     @GetMapping("/videos/**")
@@ -82,7 +82,7 @@ class GatewayController extends WebMvcConfigurerAdapter {
         body.put("action", action);
         body.put("timestamp", new Date());
         body.put("data", request);
-        return proxy.uri(commanderUrl.toString() + "/commands").body(Arrays.asList(body))
+        return proxy.uri(commanderUrl.toString() + "/stream/input/commands").body(Arrays.asList(body))
                 .post(this::event);
     }
 

@@ -7,3 +7,4 @@ target/
 *.iml
 /target
 _site/
+/browser
