@@ -6,7 +6,10 @@ import java.util.function.Function;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.cloud.stream.binder.servlet.MessageController;
 import org.springframework.context.annotation.Bean;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
@@ -23,12 +26,17 @@ public class VideoApplication {
     }
 
     @Bean
-    public Function<Flux<Command>, Flux<Event>> commands() {
+    public Function<Flux<Message<Command>>, Flux<Message<Event>>> commands() {
         return commands -> commands
-                .filter(command -> "rate-video".equals(command.getAction()))
+                .filter(command -> "rate-video".equals(command.getPayload().getAction()))
                 .map(command -> {
                     // rate it...
-                    return new Event("rated-video").data(command.getData()).parent(command.getId());
+                    return MessageBuilder
+                            .withPayload(new Event("rated-video")
+                                    .data(command.getPayload().getData())
+                                    .parent(command.getPayload().getId()))
+                            .copyHeaders(command.getHeaders())
+                            .setHeader(MessageController.ROUTE_KEY, "events").build();
                 });
     }
 
