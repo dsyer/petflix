@@ -22,7 +22,7 @@
 
         <spring-cloud-gateway.version>1.0.0.BUILD-SNAPSHOT</spring-cloud-gateway.version>
         <!-- Web dependencies -->
-        <webjars-bootstrap.version>3.3.6</webjars-bootstrap.version>
+        <webjars-bootstrap.version>3.4.0</webjars-bootstrap.version>
         <webjars-jquery-ui.version>1.11.4</webjars-jquery-ui.version>
         <webjars-jquery.version>2.2.4</webjars-jquery.version>
         <webjars-angular.version>1.4.9</webjars-angular.version>
